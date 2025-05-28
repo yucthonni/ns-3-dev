@@ -2436,7 +2436,8 @@ ThreeGppChannelModel::ChannelParamsNeedsUpdate(Ptr<const ThreeGppChannelParams> 
 
     // if the coherence time is over the channel has to be updated
     if (!m_updatePeriod.IsZero() &&
-        Simulator::Now() - channelParams->m_generatedTime > m_updatePeriod)
+        Simulator::Now() - channelParams->m_generatedTime >=
+            m_updatePeriod) // TR++ Added to update correctly the channel update period
     {
         NS_LOG_DEBUG("Generation time " << channelParams->m_generatedTime.As(Time::NS) << " now "
                                         << Now().As(Time::NS));
@@ -3239,7 +3240,7 @@ ThreeGppChannelModel::GetNewChannel(Ptr<const ThreeGppChannelParams> channelPara
     NS_LOG_FUNCTION(this);
 
     NS_ASSERT_MSG(m_frequency > 0.0, "Set the operating frequency first!");
-
+    std::cout << "Time: " << Simulator::Now().GetSeconds() << " : GET NEW CHANNEL" << std::endl;
     // create a channel matrix instance
     Ptr<ChannelMatrix> channelMatrix = Create<ChannelMatrix>();
     channelMatrix->m_generatedTime = Simulator::Now();
