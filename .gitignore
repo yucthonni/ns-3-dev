@@ -50,3 +50,12 @@ vcpkg/
 
 # Ignore local cache used by e.g. clangd
 .cache/
+
+# Ignore Results folder
+Results/
+
+# Ignore all folders in Scenarios except BostonStreetCanyon and Etoile
+contrib/nr/utils/channels/trace-based/Scenarios/*
+!contrib/nr/utils/channels/trace-based/Scenarios/BostonStreetCanyon/
+!contrib/nr/utils/channels/trace-based/Scenarios/Etoile/
+

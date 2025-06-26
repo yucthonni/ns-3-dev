@@ -5,7 +5,7 @@
  * New York University
  *
  * SPDX-License-Identifier: GPL-2.0-only
- *
+ * Modified by NIST <tanguy.ropitault@nist.gov>
  */
 
 #include "three-gpp-channel-model.h"
@@ -2437,7 +2437,7 @@ ThreeGppChannelModel::ChannelParamsNeedsUpdate(Ptr<const ThreeGppChannelParams> 
     // if the coherence time is over the channel has to be updated
     if (!m_updatePeriod.IsZero() &&
         Simulator::Now() - channelParams->m_generatedTime >=
-            m_updatePeriod) // TR++ Added to update correctly the channel update period
+            m_updatePeriod) // NIST: Added to update correctly the channel update period
     {
         NS_LOG_DEBUG("Generation time " << channelParams->m_generatedTime.As(Time::NS) << " now "
                                         << Now().As(Time::NS));

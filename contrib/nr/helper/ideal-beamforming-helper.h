@@ -1,5 +1,6 @@
 // Copyright (c) 2020 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
+// Modified by NIST <tanguy.ropitault@nist.gov>
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include "beamforming-helper-base.h"
@@ -17,11 +18,21 @@ namespace ns3
 class NrGnbNetDevice;
 class NrUeNetDevice;
 class IdealBeamformingAlgorithm;
-void LogBeamforming(uint32_t gnbId,
-                    uint32_t ueId,
-                    double power,
-                    BeamformingVector gnbBeamformingVector,
-                    BeamformingVector ueBeamformingVector);
+
+/**
+ * @brief Log the beamforming vectors to a file with a context
+ * @param context The context of the beamforming
+ * @param gnbId The ID of the gNB
+ * @param ueId The ID of the UE
+ * @param power The power of the beamforming vector
+ * @param gnbBeamformingVector The beamforming vector of the gNB
+ */
+void LogBeamformingWithContext(std::string context,
+                               uint32_t gnbId,
+                               uint32_t ueId,
+                               double power,
+                               BeamformingVector gnbBeamformingVector,
+                               BeamformingVector ueBeamformingVector);
 
 /**
  * @ingroup helper
@@ -62,6 +73,8 @@ class IdealBeamformingHelper : public BeamformingHelperBase
      */
     Time GetPeriodicity() const;
 
+    Time Get() const;
+
     /**
      * @brief Run beamforming task
      */
@@ -75,6 +88,9 @@ class IdealBeamformingHelper : public BeamformingHelperBase
      */
     void AddBeamformingTask(const Ptr<NrGnbNetDevice>& gNbDev,
                             const Ptr<NrUeNetDevice>& ueDev) override;
+
+    static std::string GetOutputDirectory();
+    static void SetOutputDirectory(const std::string& dir);
 
   protected:
     // inherited from Object
@@ -98,6 +114,8 @@ class IdealBeamformingHelper : public BeamformingHelperBase
         m_beamformingAlgorithm; //!< The beamforming algorithm that will be used
 
     std::list<SpectrumPhyPair> m_spectrumPhyPair; //!< The list of beamforming tasks to be executed
+
+    static std::string m_outputDirectory;
 };
 
 }; // namespace ns3

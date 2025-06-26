@@ -61,6 +61,19 @@ PhasedArrayModel::ComplexVector CreateDirectionalBfvAz(const Ptr<const UniformPl
                                                        double zenith);
 
 /**
+ * @brief Creates a beamforming vector for a given azimuth and zenith angles (direct angular input)
+ * @ingroup utils
+ * @param antenna Antenna array for which will be created the beamforming vector
+ * @param azimuthAngle azimuth angle in degrees
+ * @param zenithAngle zenith angle in degrees
+ * @return the beamforming vector
+ */
+PhasedArrayModel::ComplexVector CreateDirectionalBfvFromAngles(
+    const Ptr<const UniformPlanarArray>& antenna,
+    double azimuthAngle,
+    double zenithAngle);
+
+/**
  * @brief Get directs path beamforming vector bfv for a device with the mobility model
  * a for transmission toward device with a mobility model b, by using antenna aAntenna.
  * @param [in] a mobility model of the first device

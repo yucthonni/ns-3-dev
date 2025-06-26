@@ -142,6 +142,13 @@ class BeamManager : public Object
      */
     void SetSector(double sector, double elevation) const;
 
+    /**
+     * @brief Set the beamforming angles directly
+     * @param azimuthAngle azimuth angle in degrees
+     * @param zenithAngle zenith angle in degrees
+     */
+    void SetAngles(double azimuthAngle, double zenithAngle) const;
+
   private:
     Ptr<UniformPlanarArray>
         m_antennaArray;    //!< the antenna array instance for which is responsible this BeamManager

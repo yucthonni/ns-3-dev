@@ -1462,7 +1462,6 @@ NrHelper::AssignStreams(NetDeviceContainer c, int64_t stream)
     return (currentStream - stream);
 }
 
-// TR++
 int64_t
 NrHelper::DoAssignStreamsToChannelObjects(Ptr<NrSpectrumPhy> phy, int64_t currentStream)
 {
@@ -1471,8 +1470,8 @@ NrHelper::DoAssignStreamsToChannelObjects(Ptr<NrSpectrumPhy> phy, int64_t curren
     // Declare propagationLossModel in a wider scope.
     Ptr<ThreeGppPropagationLossModel> propagationLossModel = 0;
     Ptr<PropagationLossModel> pl = phy->GetSpectrumChannel()->GetPropagationLossModel();
-    // In the case we are just setting the QdSpectrumPropagationLossModel for the QD channel matrix,
-    // we do not want to set the ThreeGppPropagationLossModel
+    // In the case we are just setting the TracesSpectrumPropagationLossModel for the Traces channel
+    // matrix, we do not want to set the ThreeGppPropagationLossModel
     if (pl)
     {
         propagationLossModel = DynamicCast<ThreeGppPropagationLossModel>(pl);

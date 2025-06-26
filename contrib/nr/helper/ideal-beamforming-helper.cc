@@ -1,11 +1,13 @@
 // Copyright (c) 2020 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
+// Modified by NIST <tanguy.ropitault@nist.gov>
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include "ideal-beamforming-helper.h"
 
 #include "ns3/ideal-beamforming-algorithm.h"
 #include "ns3/log.h"
+#include "ns3/node.h"
 #include "ns3/nr-gnb-net-device.h"
 #include "ns3/nr-gnb-phy.h"
 #include "ns3/nr-spectrum-phy.h"
@@ -20,28 +22,28 @@ namespace ns3
 NS_LOG_COMPONENT_DEFINE("IdealBeamformingHelper");
 NS_OBJECT_ENSURE_REGISTERED(IdealBeamformingHelper);
 
-// TR++
+// Initialize static member variable
+std::string IdealBeamformingHelper::m_outputDirectory = "./";
+
+// Wrapper function for LogBeamforming with pair identification
 void
-LogBeamforming(uint32_t gnbId,
-               uint32_t ueId,
-               double power,
-               BeamformingVector gnbBeamformingVector,
-               BeamformingVector ueBeamformingVector)
+LogBeamformingWithContext(std::string context,
+                          uint32_t gnbId,
+                          uint32_t ueId,
+                          double power,
+                          BeamformingVector gnbBeamformingVector,
+                          BeamformingVector ueBeamformingVector)
 {
+    // The beamforming is also performed between gNBs so this should be adapted to handle that.
+    // Basically just change the signature to use Tx and Rx instead of gnbId and ueId.
+    // However, this is not needed for the current use case.
     std::cout << "Beamforming performed: gNB ID = " << gnbId << ", UE ID = " << ueId << std::endl;
     static std::set<std::tuple<double, std::string, std::string>> loggedEntries;
-    static const std::string filename = "beamformingVector.csv";
+
+    // Use the output directory from the helper
+    std::string filename = IdealBeamformingHelper::GetOutputDirectory() + "beamformingVector.csv";
 
     double timestamp = Simulator::Now().GetMilliSeconds();
-    auto entryKey = std::make_tuple(timestamp, "TX", "RX");
-
-    // Check if the entry already exists
-    if (loggedEntries.find(entryKey) != loggedEntries.end())
-    {
-        return; // Skip duplicate entry
-    }
-
-    loggedEntries.insert(entryKey);
 
     std::ofstream file;
     bool fileExists = std::ifstream(filename).good();
@@ -52,7 +54,7 @@ LogBeamforming(uint32_t gnbId,
     // Write header if the file is new
     if (!fileExists)
     {
-        file << "Timestamp,Device,ElementIndex,Real,Imag,Sector,Elevation,Power\n";
+        file << "Timestamp,gNB_ID,UE_ID,Device,ElementIndex,Real,Imag,Sector,Elevation,Power\n";
     }
 
     // Write gNB beamforming vector
@@ -61,9 +63,9 @@ LogBeamforming(uint32_t gnbId,
 
     for (size_t i = 0; i < gnbComplexVector.GetSize(); ++i)
     {
-        file << timestamp << ",TX," << i + 1 << "," << gnbComplexVector[i].real() << ","
-             << gnbComplexVector[i].imag() << "," << gnbBeamId.GetSector() << ","
-             << gnbBeamId.GetElevation() << "," << power << "\n";
+        file << timestamp << "," << gnbId << "," << ueId << ",TX," << i + 1 << ","
+             << gnbComplexVector[i].real() << "," << gnbComplexVector[i].imag() << ","
+             << gnbBeamId.GetSector() << "," << gnbBeamId.GetElevation() << "," << power << "\n";
     }
 
     // Write UE beamforming vector
@@ -72,9 +74,9 @@ LogBeamforming(uint32_t gnbId,
 
     for (size_t i = 0; i < ueComplexVector.GetSize(); ++i)
     {
-        file << timestamp << ",RX," << i + 1 << "," << ueComplexVector[i].real() << ","
-             << ueComplexVector[i].imag() << "," << ueBeamId.GetSector() << ","
-             << ueBeamId.GetElevation() << "," << power << "\n";
+        file << timestamp << "," << gnbId << "," << ueId << ",RX," << i + 1 << ","
+             << ueComplexVector[i].real() << "," << ueComplexVector[i].imag() << ","
+             << ueBeamId.GetSector() << "," << ueBeamId.GetElevation() << "," << power << "\n";
     }
 
     file.close();
@@ -138,8 +140,14 @@ IdealBeamformingHelper::AddBeamformingTask(const Ptr<NrGnbNetDevice>& gnbDev,
     {
         Ptr<NrSpectrumPhy> gnbSpectrumPhy = gnbDev->GetPhy(ccId)->GetSpectrumPhy();
         Ptr<NrSpectrumPhy> ueSpectrumPhy = ueDev->GetPhy(ccId)->GetSpectrumPhy();
-        m_beamformingAlgorithm->TraceConnectWithoutContext("BeamformingPerformed",
-                                                           MakeCallback(&LogBeamforming)); // TR++
+
+        // Create a unique context string for this gNB-UE pair
+        std::string pairContext = "gNB" + std::to_string(gnbDev->GetNode()->GetId()) + "-UE" +
+                                  std::to_string(ueDev->GetNode()->GetId());
+
+        m_beamformingAlgorithm->TraceConnect("BeamformingPerformed",
+                                             pairContext,
+                                             MakeCallback(&LogBeamformingWithContext));
         m_spectrumPhyPair.emplace_back(gnbSpectrumPhy, ueSpectrumPhy);
         RunTask(gnbSpectrumPhy, ueSpectrumPhy);
     }
@@ -200,6 +208,25 @@ IdealBeamformingHelper::GetPeriodicity() const
 {
     NS_LOG_FUNCTION(this);
     return m_beamformingPeriodicity;
+}
+
+// Implement the setter method
+void
+IdealBeamformingHelper::SetOutputDirectory(const std::string& dir)
+{
+    m_outputDirectory = dir;
+    // Ensure directory ends with '/'
+    if (!m_outputDirectory.empty() && m_outputDirectory.back() != '/')
+    {
+        m_outputDirectory += "/";
+    }
+}
+
+// Implement the getter method
+std::string
+IdealBeamformingHelper::GetOutputDirectory()
+{
+    return m_outputDirectory;
 }
 
 } // namespace ns3

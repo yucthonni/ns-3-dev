@@ -82,7 +82,11 @@ $ ./ns3 run "cttc-nr-demo --PrintHelp"
 #include "ns3/nr-module.h"
 #include "ns3/point-to-point-module.h"
 
+#include <cstring>
+#include <errno.h>
 #include <fstream>
+#include <sys/stat.h>
+#include <sys/types.h>
 
 /*
  * Use, always, the namespace ns3. All the NR classes are inside such namespace.
@@ -101,7 +105,7 @@ std::string g_sinrTraceFile;
 std::string g_positionTraceFile;
 std::string qdFolder =
     "contrib/nr/utils/channels/external-mpcs/Scenarios/"; // Path to QD channel model scenarios
-std::string qdScenario = "BostonStreetCanyon";            // QD channel model scenario name
+std::string qdScenario = "Etoiles90TracesBackup";         // QD channel model scenario name
 
 // Add these global variables after the existing global variables
 std::map<uint32_t, uint64_t> g_lastRxBytes;   // Track last received bytes for each flow
@@ -113,6 +117,9 @@ std::map<uint32_t, Time> g_lastJitterSum;     // Track last jitter sum for each 
 
 // Global variable for the output file
 std::ofstream g_statsFile;
+
+// Global variable for the flow monitor
+Ptr<FlowMonitor> g_monitor;
 
 void
 ReportSinrTrace(uint16_t cellId, uint16_t rnti, double sinr, uint16_t bwpId)
@@ -145,18 +152,35 @@ CourseChange(std::string context, Ptr<const MobilityModel> mobility)
 
 // Add this callback function before main()
 void
-ReportStats(Ptr<FlowMonitor> monitor)
+ReportStats()
 {
-    FlowMonitor::FlowStatsContainer stats = monitor->GetFlowStats();
+    FlowMonitor::FlowStatsContainer stats = g_monitor->GetFlowStats();
     Time now = Simulator::Now();
 
     // Open file if it's not already open
     if (!g_statsFile.is_open())
     {
-        g_statsFile.open("flow_stats.csv");
-        g_statsFile << "Time,FlowId,Throughput(Mbps),AvgDelay(ms),AvgJitter(ms),PDR,InstDelay(ms),"
-                       "InstJitter(ms),InstPDR"
-                    << std::endl;
+        // Get the directory from g_sinrTraceFile and use it for flow_stats.csv
+        std::string flowStatsFile =
+            g_sinrTraceFile.substr(0, g_sinrTraceFile.find_last_of('/')) + "/flow_stats.csv";
+
+        // Check if directory exists
+        std::string dir = flowStatsFile.substr(0, flowStatsFile.find_last_of('/'));
+
+        g_statsFile.open(flowStatsFile);
+
+        if (!g_statsFile.is_open())
+        {
+            std::cout << "Failed to open file: " << flowStatsFile << std::endl;
+            std::cout << "Error: " << strerror(errno) << std::endl;
+        }
+        else
+        {
+            g_statsFile
+                << "Time,FlowId,Throughput(Mbps),AvgDelay(ms),AvgJitter(ms),PDR,InstDelay(ms),"
+                   "InstJitter(ms),InstPDR"
+                << std::endl;
+        }
     }
 
     for (auto& stat : stats)
@@ -228,7 +252,7 @@ ReportStats(Ptr<FlowMonitor> monitor)
     }
 
     // Schedule next measurement
-    Simulator::Schedule(MilliSeconds(100), &ReportStats, monitor);
+    Simulator::Schedule(MilliSeconds(100), MakeCallback(&ReportStats));
 }
 
 // Don't forget to close the file at the end of the simulation
@@ -276,6 +300,43 @@ ReadPositionsFromFile(const std::string& filename)
     return positions;
 }
 
+// Function to create directories if they don't exist
+void
+CreateDirectoryStructure(const std::string& path)
+{
+    std::cout << "Creating directory structure: " << path << std::endl;
+    std::string currentPath;
+    std::stringstream ss(path);
+    std::string segment;
+
+    while (std::getline(ss, segment, '/'))
+    {
+        if (!segment.empty())
+        {
+            currentPath += segment + "/";
+            struct stat st = {0};
+            if (stat(currentPath.c_str(), &st) == -1)
+            {
+                std::cout << "Creating directory: " << currentPath << std::endl;
+                int result = mkdir(currentPath.c_str(), 0755);
+                if (result != 0)
+                {
+                    std::cout << "Failed to create directory: " << currentPath
+                              << " Error: " << strerror(errno) << std::endl;
+                }
+                else
+                {
+                    std::cout << "Successfully created directory: " << currentPath << std::endl;
+                }
+            }
+            else
+            {
+                std::cout << "Directory already exists: " << currentPath << std::endl;
+            }
+        }
+    }
+}
+
 int
 main(int argc, char* argv[])
 {
@@ -288,11 +349,12 @@ main(int argc, char* argv[])
     uint16_t gNbNum = 1;
     uint16_t ueNumPergNb = 1;
     bool logging = false;
-    std::string channelModel = "QD"; // Options: "QD" or "3GPP"
+    std::string channelModel = "Traces"; // Options: "QD" or "3GPP"
 
     // Traffic parameters (that we will use inside this script):
-    uint32_t udpPacketSize = 1480;
-    uint32_t lambda = 10000;
+    uint32_t udpPacketSize = 1500;
+    uint32_t lambda = 1;
+    // uint32_t lambda = 10000;
 
     // Simulation parameters. Please don't use double to indicate seconds; use
     // ns-3 Time values which use integers to avoid portability issues.
@@ -301,13 +363,19 @@ main(int argc, char* argv[])
 
     // NR parameters (Reference: 3GPP TR 38.901 V17.0.0 (Release 17)
     // Table 7.8-1 for the power and BW).
-    uint16_t numerologyBwp1 = 4;
+    uint16_t numerologyBwp1 = 3;
     double centralFrequencyBand1 = 28e9;
     double bandwidthBand1 = 100e6;
     double totalTxPower = 35;
 
-    std::string simTag;
-    std::string outputDir = "./";
+    // Antenna configuration parameters
+    uint16_t gnbNumRows = 16;
+    uint16_t gnbNumColumns = 16;
+    uint16_t ueNumRows = 4;
+    uint16_t ueNumColumns = 4;
+
+    // RLC buffer size parameter (in bytes)
+    uint32_t rlcBufferSize = 10000; // Default: very large (like original)
 
     /*
      * From here, we instruct the ns3::CommandLine class of all the input parameters
@@ -332,22 +400,56 @@ main(int argc, char* argv[])
                  "total tx power that will be proportionally assigned to"
                  " bands, CCs and bandwidth parts depending on each BWP bandwidth ",
                  totalTxPower);
-    cmd.AddValue("simTag",
-                 "tag to be appended to output filenames to distinguish simulation campaigns",
-                 simTag);
-    cmd.AddValue("outputDir", "directory where to store simulation results", outputDir);
+    cmd.AddValue("gnbNumRows", "Number of antenna rows for gNodeB", gnbNumRows);
+    cmd.AddValue("gnbNumColumns", "Number of antenna columns for gNodeB", gnbNumColumns);
+    cmd.AddValue("ueNumRows", "Number of antenna rows for UE", ueNumRows);
+    cmd.AddValue("ueNumColumns", "Number of antenna columns for UE", ueNumColumns);
+    cmd.AddValue("qdScenario", "QD channel model scenario name", qdScenario);
+    cmd.AddValue("rlcBufferSize", "RLC buffer size in bytes (0 = unlimited)", rlcBufferSize);
 
     // Parse the command line
     cmd.Parse(argc, argv);
 
-    // Set up file names with channel model suffix
-    g_sinrTraceFile = "sinr_trace_" + channelModel + ".csv";
-    g_positionTraceFile = "position_trace_" + channelModel + ".csv";
-    simTag = "default_" + channelModel;
-    outputDir = "./";
+    // Create hierarchical directory structure: Results/qdScenario/channelModel
+    std::string resultsDir = "Results";
+    std::string scenarioDir = resultsDir + "/" + qdScenario;
+    std::string channelModelDir;
+
+    if (channelModel == "Traces")
+    {
+        channelModelDir = scenarioDir + "/externalMPCs";
+    }
+    else if (channelModel == "3GPP")
+    {
+        channelModelDir = scenarioDir + "/3GPP";
+    }
+    else
+    {
+        NS_FATAL_ERROR("Unknown channel model: " << channelModel);
+    }
+
+    // Create the directory structure if it doesn't exist
+    CreateDirectoryStructure(channelModelDir);
+
+    // Create antenna configuration subfolder
+    std::string antennaConfigDir = channelModelDir + "/GnodeB_" + std::to_string(gnbNumRows) + "x" +
+                                   std::to_string(gnbNumColumns) + "_UE_" +
+                                   std::to_string(ueNumRows) + "x" + std::to_string(ueNumColumns);
+
+    // Create the antenna configuration directory if it doesn't exist
+    CreateDirectoryStructure(antennaConfigDir);
+
+    // Set up file names with the new directory structure (now includes antenna config)
+    g_sinrTraceFile = antennaConfigDir + "/sinr_trace" + ".csv";
+    g_positionTraceFile = antennaConfigDir + "/position_trace" + ".csv";
+
+    std::cout << "Directory structure created." << std::endl;
+    std::cout << "channelModelDir: " << channelModelDir << std::endl;
+    std::cout << "antennaConfigDir: " << antennaConfigDir << std::endl;
+    std::cout << "g_sinrTraceFile: " << g_sinrTraceFile << std::endl;
 
     // Delete beamformingVector.csv if it exists
-    std::string beamformingFile = "beamformingVector.csv";
+    std::string beamformingFile = antennaConfigDir + "/beamformingVector.csv";
     std::ifstream fileCheck(beamformingFile);
     if (fileCheck.good())
     {
@@ -356,7 +458,7 @@ main(int argc, char* argv[])
     fileCheck.close();
 
     // Delete flow_stats.csv file if it exists
-    std::string statsFile = "flow_stats.csv";
+    std::string statsFile = antennaConfigDir + "/flow_stats.csv";
     std::ifstream statsFileCheck(statsFile);
     if (statsFileCheck.good())
     {
@@ -414,10 +516,8 @@ main(int argc, char* argv[])
         LogComponentEnable("UdpServer", LOG_LEVEL_INFO);
         LogComponentEnable("NrPdcp", LOG_LEVEL_INFO);
         LogComponentEnable("NrHelper", LOG_LEVEL_ALL);
-        LogComponentEnable("QdChannelModel", LOG_LEVEL_ALL);
+        LogComponentEnable("TracesChannelModel", LOG_LEVEL_ALL);
     }
-    LogComponentEnable("NrAmc", LOG_LEVEL_ALL);
-    LogComponentEnable("NrLteAmc", LOG_LEVEL_ALL);
 
     RngSeedManager::SetSeed(5);
     /*
@@ -426,7 +526,11 @@ main(int argc, char* argv[])
      * an example: if you want to make the RLC buffer very large, you can pass a very large integer
      * here.
      */
-    Config::SetDefault("ns3::NrRlcUm::MaxTxBufferSize", UintegerValue(999999999));
+    Config::SetDefault("ns3::NrRlcUm::MaxTxBufferSize", UintegerValue(rlcBufferSize));
+
+    // Set MAC scheduling stats output file to the antenna config directory
+    Config::SetDefault("ns3::NrMacSchedulingStats::DlOutputFilename",
+                       StringValue(antennaConfigDir + "/NrDlMacStats.txt"));
 
     /*
      * Create the scenario. In our examples, we heavily use helpers that setup
@@ -442,9 +546,13 @@ main(int argc, char* argv[])
     ueNodes.Create(1);
 
     // Create the mobility model
-    std::string gnbPositionFile = qdFolder + qdScenario + "/device0.csv";
-    std::string uePositionFile = qdFolder + qdScenario + "/device1.csv";
-    if (channelModel == "QD" || channelModel == "3GPP")
+    // TR++ TODO: Manage that in a better way - Probably read the file in the QD channel model and
+    // manage multiples gNodeB and UEs case
+    std::string gnbPositionFile =
+        qdFolder + qdScenario + "/Output/Ns3/NodesPosition" + "/device0.csv";
+    std::string uePositionFile =
+        qdFolder + qdScenario + "/Output/Ns3/NodesPosition" + "/device1.csv";
+    if (channelModel == "Traces" || channelModel == "3GPP")
     {
         // For both QD and 3GPP models, read positions from file
         MobilityHelper mobility;
@@ -504,6 +612,10 @@ main(int argc, char* argv[])
     // Put the pointers inside nrHelper
     nrHelper->SetBeamformingHelper(idealBeamformingHelper);
     nrHelper->SetEpcHelper(nrEpcHelper);
+
+    // Set the output directory for beamforming files
+    IdealBeamformingHelper::SetOutputDirectory(antennaConfigDir);
+
     nrHelper->SetAttribute("CsiFeedbackFlags", UintegerValue(CQI_PDSCH_SISO));
     idealBeamformingHelper->SetAttribute("BeamformingMethod",
                                          TypeIdValue(CellScanBeamforming::GetTypeId()));
@@ -543,16 +655,17 @@ main(int argc, char* argv[])
     // Create and configure the channel model based on the selected option
     Ptr<NrChannelHelper> channelHelper = CreateObject<NrChannelHelper>();
 
-    if (channelModel == "QD")
+    if (channelModel == "Traces")
     {
         // Configure QD channel model
-        Ptr<QdChannelModel> qdChannelModel = CreateObject<QdChannelModel>(qdFolder, qdScenario);
-        Config::SetDefault("ns3::QdSpectrumPropagationLossModel::ChannelModel",
-                           PointerValue(qdChannelModel));
+        Ptr<TracesChannelModel> tracesChannelModel =
+            CreateObject<TracesChannelModel>(qdFolder, qdScenario);
+        Config::SetDefault("ns3::TracesSpectrumPropagationLossModel::ChannelModel",
+                           PointerValue(tracesChannelModel));
         //  Config::SetDefault("ns3::CellScanBeamforming::BeamSearchAngleStep",
         //  DoubleValue(30));
 
-        channelHelper->ConfigureSpectrumFactory(QdSpectrumPropagationLossModel::GetTypeId());
+        channelHelper->ConfigureSpectrumFactory(TracesSpectrumPropagationLossModel::GetTypeId());
 
         channelHelper->AssignChannelsToBands({band1}, NrChannelHelper::INIT_FADING);
     }
@@ -572,7 +685,7 @@ main(int argc, char* argv[])
     }
     else
     {
-        NS_FATAL_ERROR("Invalid channel model selected. Choose either 'QD' or '3GPP'");
+        NS_FATAL_ERROR("Invalid channel model selected. Choose either 'Traces' or '3GPP'");
     }
 
     /*
@@ -608,16 +721,17 @@ main(int argc, char* argv[])
 
     // Antennas for all the UEs
 
-    nrHelper->SetUeAntennaAttribute("NumRows",
-                                    UintegerValue(2)); // this is just one antenna but then within
-                                                       // the antenna there are multiple beams.
-    nrHelper->SetUeAntennaAttribute("NumColumns", UintegerValue(16));
+    nrHelper->SetUeAntennaAttribute(
+        "NumRows",
+        UintegerValue(ueNumRows)); // this is just one antenna but then within
+                                   // the antenna there are multiple beams.
+    nrHelper->SetUeAntennaAttribute("NumColumns", UintegerValue(ueNumColumns));
     nrHelper->SetUeAntennaAttribute("AntennaElement",
                                     PointerValue(CreateObject<IsotropicAntennaModel>()));
 
     // Antennas for all the gNbs
-    nrHelper->SetGnbAntennaAttribute("NumRows", UintegerValue(2));
-    nrHelper->SetGnbAntennaAttribute("NumColumns", UintegerValue(16));
+    nrHelper->SetGnbAntennaAttribute("NumRows", UintegerValue(gnbNumRows));
+    nrHelper->SetGnbAntennaAttribute("NumColumns", UintegerValue(gnbNumColumns));
     nrHelper->SetGnbAntennaAttribute("AntennaElement",
                                      PointerValue(CreateObject<IsotropicAntennaModel>()));
 
@@ -781,8 +895,11 @@ main(int argc, char* argv[])
     monitor->SetAttribute("JitterBinWidth", DoubleValue(0.001));
     monitor->SetAttribute("PacketSizeBinWidth", DoubleValue(20));
 
+    // Set the global monitor variable
+    g_monitor = monitor;
+
     // Start stats monitoring
-    Simulator::Schedule(MilliSeconds(100), &ReportStats, monitor);
+    Simulator::Schedule(MilliSeconds(100), MakeCallback(&ReportStats));
 
     Simulator::Stop(simTime);
 
@@ -798,7 +915,7 @@ main(int argc, char* argv[])
     double averageFlowDelay = 0.0;
 
     std::ofstream outFile;
-    std::string filename = outputDir + "/" + simTag;
+    std::string filename = antennaConfigDir + "/simulation_results.txt";
     outFile.open(filename.c_str(), std::ofstream::out | std::ofstream::trunc);
     if (!outFile.is_open())
     {

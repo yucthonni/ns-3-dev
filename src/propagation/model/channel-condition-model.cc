@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2019 SIGNET Lab, Department of Information Engineering,
  * University of Padova
- *
+ * Modified by NIST <tanguy.ropitault@nist.gov>
  * SPDX-License-Identifier: GPL-2.0-only
  */
 
@@ -413,7 +413,7 @@ ThreeGppChannelConditionModel::GetChannelCondition(Ptr<const MobilityModel> a,
         // check if it has to be updated
         if (!m_updatePeriod.IsZero() &&
             Simulator::Now() - mapItem->second.m_generatedTime >=
-                m_updatePeriod) // TR++ Changed to handle correctly the update period
+                m_updatePeriod) // NIST: Changed to handle correctly the update period
         {
             NS_LOG_DEBUG("it has to be updated");
             update = true;

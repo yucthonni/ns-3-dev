@@ -1,6 +1,7 @@
 // Copyright (c) 2024 LASSE / Universidade Federal do Pará (UFPA)
 // Copyright (c) 2024 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
+// Modified by NIST <tanguy.ropitault@nist.gov>
 // SPDX-License-Identifier: GPL-2.0-only
 // Author: João Albuquerque <joao.barbosa.albuquerque@itec.ufpa.br>
 
@@ -176,7 +177,7 @@ class NrChannelHelper : public Object
         ThreeGpp, //!< 3GPP
         TwoRay,   //!< TwoRay
         NYU,      //!< NYU
-        QD,       //!< QD channel model
+        Traces,   //!< Traces-Based channel model
     } m_channelModel{ChannelModel::ThreeGpp};
 
     /**

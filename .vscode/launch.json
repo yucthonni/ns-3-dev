@@ -30,6 +30,18 @@
             ]
         },
         {
+            "name": "Run MATLAB Script (headless)",
+            "type": "matlab",
+            "request": "launch",
+            "program": "${file}",
+            // keep Java but suppress desktop UI:
+            "options": {
+              "linux": {
+                "exec": "matlab -nodesktop -nodisplay"
+              }
+            }
+          },
+        {
             "name": "(lldb) Launch from scratch",
             "type": "cppdbg",
             "request": "launch",

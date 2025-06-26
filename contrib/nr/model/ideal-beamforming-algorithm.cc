@@ -1,11 +1,14 @@
 // Copyright (c) 2020 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
+// Modified by NIST <tanguy.ropitault@nist.gov>
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include "ideal-beamforming-algorithm.h"
 
+#include "beamforming-vector.h"
 #include "nr-spectrum-phy.h"
 
+#include "ns3/boolean.h"
 #include "ns3/double.h"
 #include "ns3/integer.h"
 #include "ns3/multi-model-spectrum-channel.h"
@@ -37,7 +40,7 @@ IdealBeamformingAlgorithm::GetTypeId()
                 "BeamformingPerformed",
                 "Traced callback for when beamforming is performed",
                 MakeTraceSourceAccessor(&IdealBeamformingAlgorithm::m_beamformingPerformed),
-                "ns3::IdealBeamformingAlgorithm::BeamformingPerformedCallback"); // TR++
+                "ns3::IdealBeamformingAlgorithm::BeamformingPerformedCallback");
     return tid;
 }
 
@@ -52,11 +55,96 @@ CellScanBeamforming::GetTypeId()
                           "Samples per antenna row/column",
                           UintegerValue(1),
                           MakeUintegerAccessor(&CellScanBeamforming::m_oversamplingFactor),
-                          MakeUintegerChecker<uint8_t>(1, 4));
+                          MakeUintegerChecker<uint8_t>(1, 4))
+            .AddAttribute("UseAngularScanning",
+                          "Use angular scanning instead of sector-based scanning",
+                          BooleanValue(true),
+                          MakeBooleanAccessor(&CellScanBeamforming::GetUseAngularScanning,
+                                              &CellScanBeamforming::SetUseAngularScanning),
+                          MakeBooleanChecker())
+            .AddAttribute("TxZenithStep",
+                          "TX zenith angle step in degrees for angular scanning",
+                          DoubleValue(10.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetTxZenithStep,
+                                             &CellScanBeamforming::SetTxZenithStep),
+                          MakeDoubleChecker<double>(0.1, 180.0))
+            .AddAttribute("RxZenithStep",
+                          "RX zenith angle step in degrees for angular scanning",
+                          DoubleValue(10.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetRxZenithStep,
+                                             &CellScanBeamforming::SetRxZenithStep),
+                          MakeDoubleChecker<double>(0.1, 180.0))
+            .AddAttribute("TxAzimuthStep",
+                          "TX azimuth angle step in degrees for angular scanning",
+                          DoubleValue(10.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetTxAzimuthStep,
+                                             &CellScanBeamforming::SetTxAzimuthStep),
+                          MakeDoubleChecker<double>(0.1, 360.0))
+            .AddAttribute("RxAzimuthStep",
+                          "RX azimuth angle step in degrees for angular scanning",
+                          DoubleValue(20.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetRxAzimuthStep,
+                                             &CellScanBeamforming::SetRxAzimuthStep),
+                          MakeDoubleChecker<double>(0.1, 360.0))
+            .AddAttribute("TxZenithStart",
+                          "TX zenith angle start in degrees for angular scanning",
+                          DoubleValue(0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetTxZenithStart,
+                                             &CellScanBeamforming::SetTxZenithStart),
+                          MakeDoubleChecker<double>(0.0, 180.0))
+            .AddAttribute("TxZenithEnd",
+                          "TX zenith angle end in degrees for angular scanning",
+                          DoubleValue(180),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetTxZenithEnd,
+                                             &CellScanBeamforming::SetTxZenithEnd),
+                          MakeDoubleChecker<double>(0.0, 180.0))
+            .AddAttribute("RxZenithStart",
+                          "RX zenith angle start in degrees for angular scanning",
+                          DoubleValue(0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetRxZenithStart,
+                                             &CellScanBeamforming::SetRxZenithStart),
+                          MakeDoubleChecker<double>(0.0, 180.0))
+            .AddAttribute("RxZenithEnd",
+                          "RX zenith angle end in degrees for angular scanning",
+                          DoubleValue(180),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetRxZenithEnd,
+                                             &CellScanBeamforming::SetRxZenithEnd),
+                          MakeDoubleChecker<double>(0.0, 180.0))
+            .AddAttribute("TxAzimuthStart",
+                          "TX azimuth angle start in degrees for angular scanning",
+                          DoubleValue(0.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetTxAzimuthStart,
+                                             &CellScanBeamforming::SetTxAzimuthStart),
+                          MakeDoubleChecker<double>(0.0, 360.0))
+            .AddAttribute("TxAzimuthEnd",
+                          "TX azimuth angle end in degrees for angular scanning",
+                          DoubleValue(360.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetTxAzimuthEnd,
+                                             &CellScanBeamforming::SetTxAzimuthEnd),
+                          MakeDoubleChecker<double>(0.0, 360.0))
+            .AddAttribute("RxAzimuthStart",
+                          "RX azimuth angle start in degrees for angular scanning",
+                          DoubleValue(0.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetRxAzimuthStart,
+                                             &CellScanBeamforming::SetRxAzimuthStart),
+                          MakeDoubleChecker<double>(0.0, 360.0))
+            .AddAttribute("RxAzimuthEnd",
+                          "RX azimuth angle end in degrees for angular scanning",
+                          DoubleValue(360.0),
+                          MakeDoubleAccessor(&CellScanBeamforming::GetRxAzimuthEnd,
+                                             &CellScanBeamforming::SetRxAzimuthEnd),
+                          MakeDoubleChecker<double>(0.0, 360.0));
 
     return tid;
 }
 
+/**
+ * @brief Function that generates the beamforming vectors for a pair of
+ * communicating devices using either sector-based or angular-based cell scan method
+ * @param [in] gnbSpectrumPhy the spectrum phy of the gNB
+ * @param [in] ueSpectrumPhy the spectrum phy of the UE device
+ * @return the beamforming vector pair of the gNB and the UE
+ */
 BeamformingVectorPair
 CellScanBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectrumPhy,
                                            const Ptr<NrSpectrumPhy>& ueSpectrumPhy) const
@@ -114,90 +202,204 @@ CellScanBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectrum
 
     NS_ASSERT(gnbUpa->GetNumElems() && ueUpa->GetNumElems());
 
-    double txZenithStep = 180 / ((txNumRows > 1 ? m_oversamplingFactor : 1) * txNumRows);
-    double txSectorStep = 1.0 / (txNumCols > 1 ? m_oversamplingFactor : 1);
-    double rxZenithStep = 180 / ((rxNumRows > 1 ? m_oversamplingFactor : 1) * rxNumRows);
-    double rxSectorStep = 1.0 / (rxNumCols > 1 ? m_oversamplingFactor : 1);
-
-    txZenithStep = 10;
-    rxZenithStep = 10; // TR++
-
-    for (double txZenith = 0; txZenith < 180; txZenith += txZenithStep)
+    // Dual-mode beamforming implementation:
+    // - Angular scanning: Direct control of azimuth and zenith angles with configurable step sizes
+    // - Sector scanning: Traditional 5G-LENA approach based on antenna array dimensions and
+    // oversampling
+    if (m_useAngularScanning)
     {
-        // Calculate beam elevation to center it into the middle of the wedge, and not at the start
-        double txTheta = txZenith + txZenithStep * 0.5;
-        for (double txSector = 0; txSector < txNumCols; txSector += txSectorStep)
+        // Angular-based scanning mode
+        NS_LOG_INFO("Using angular-based beamforming scanning");
+
+        // Use the configured angular step values
+        double txZenithStep = m_txZenithStep;
+        double rxZenithStep = m_rxZenithStep;
+        double txAzimuthStep = m_txAzimuthStep;
+        double rxAzimuthStep = m_rxAzimuthStep;
+
+        // Scan through zenith angles using configurable range
+        for (double txZenith = m_txZenithStart; txZenith < m_txZenithEnd; txZenith += txZenithStep)
         {
-            NS_ASSERT(txSector < UINT16_MAX);
-            gnbSpectrumPhy->GetBeamManager()->SetSector(txSector, txTheta);
-            PhasedArrayModel::ComplexVector txW =
-                gnbSpectrumPhy->GetBeamManager()->GetCurrentBeamformingVector();
+            // Use the current zenith angle directly for angular scanning
+            double txTheta = txZenith;
 
-            if (maxTxW.GetSize() == 0)
+            // Scan through azimuth angles using configurable range
+            for (double txAzimuth = m_txAzimuthStart; txAzimuth < m_txAzimuthEnd;
+                 txAzimuth += txAzimuthStep)
             {
-                maxTxW = txW; // initialize maxTxW
-            }
+                NS_ASSERT(txAzimuth < UINT16_MAX);
 
-            for (double rxZenith = 0; rxZenith < 180; rxZenith += txZenithStep)
-            {
-                // Calculate beam elevation to center it into the middle of the wedge, and not at
-                // the start
-                double rxTheta = rxZenith + rxZenithStep * 0.5;
-                for (double rxSector = 0; rxSector < rxNumCols; rxSector += rxSectorStep)
+                // Use the new SetAngles method for angular-based beamforming
+                gnbSpectrumPhy->GetBeamManager()->SetAngles(txAzimuth, txTheta);
+                PhasedArrayModel::ComplexVector txW =
+                    gnbSpectrumPhy->GetBeamManager()->GetCurrentBeamformingVector();
+
+                if (maxTxW.GetSize() == 0)
                 {
-                    NS_ASSERT(rxSector < UINT16_MAX);
+                    maxTxW = txW; // initialize maxTxW
+                }
 
-                    ueSpectrumPhy->GetBeamManager()->SetSector(rxSector, rxTheta);
-                    PhasedArrayModel::ComplexVector rxW =
-                        ueSpectrumPhy->GetBeamManager()->GetCurrentBeamformingVector();
+                // Scan through RX zenith angles using configurable range
+                for (double rxZenith = m_rxZenithStart; rxZenith < m_rxZenithEnd;
+                     rxZenith += rxZenithStep)
+                {
+                    // Use the current zenith angle directly for angular scanning
+                    double rxTheta = rxZenith;
 
-                    if (maxRxW.GetSize() == 0)
+                    // Scan through RX azimuth angles using configurable range
+                    for (double rxAzimuth = m_rxAzimuthStart; rxAzimuth < m_rxAzimuthEnd;
+                         rxAzimuth += rxAzimuthStep)
                     {
-                        maxRxW = rxW; // initialize maxRxW
+                        NS_ASSERT(rxAzimuth < UINT16_MAX);
+
+                        // Use the new SetAngles method for angular-based beamforming
+                        ueSpectrumPhy->GetBeamManager()->SetAngles(rxAzimuth, rxTheta);
+                        PhasedArrayModel::ComplexVector rxW =
+                            ueSpectrumPhy->GetBeamManager()->GetCurrentBeamformingVector();
+
+                        if (maxRxW.GetSize() == 0)
+                        {
+                            maxRxW = rxW; // initialize maxRxW
+                        }
+
+                        NS_ABORT_MSG_IF(
+                            txW.GetSize() == 0 || rxW.GetSize() == 0,
+                            "Beamforming vectors must be initialized in order to calculate "
+                            "the long term matrix.");
+
+                        Ptr<SpectrumSignalParameters> rxParams =
+                            gnbThreeGppSpectrumPropModel->CalcRxPowerSpectralDensity(
+                                fakeParams,
+                                gnbSpectrumPhy->GetMobility(),
+                                ueSpectrumPhy->GetMobility(),
+                                gnbSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>(),
+                                ueSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>());
+
+                        size_t nbands = rxParams->psd->GetSpectrumModel()->GetNumBands();
+                        double power = Sum(*(rxParams->psd)) / nbands;
+
+                        NS_LOG_LOGIC(" Rx power: " << power << " txTheta " << txTheta << " rxTheta "
+                                                   << rxTheta << " txAzimuth " << txAzimuth
+                                                   << " rxAzimuth " << rxAzimuth);
+
+                        double delta = power - max;
+                        // Handle numerical precision to avoid floating-point comparison issues
+                        if (delta > max * 1e-6)
+                        {
+                            max = power;
+                            maxTxSector = static_cast<uint16_t>(txAzimuth);
+                            maxRxSector = static_cast<uint16_t>(rxAzimuth);
+                            maxTxTheta = txTheta;
+                            maxRxTheta = rxTheta;
+                            maxTxW = txW;
+                            maxRxW = rxW;
+                        }
                     }
+                }
+            }
+        }
+    }
+    else
+    {
+        // Original sector-based scanning mode
+        NS_LOG_INFO("Using sector-based beamforming scanning");
 
-                    NS_ABORT_MSG_IF(txW.GetSize() == 0 || rxW.GetSize() == 0,
-                                    "Beamforming vectors must be initialized in order to calculate "
-                                    "the long term matrix.");
+        // In the original 5G LENA implementation, beamforming resolution is tied to the number
+        // of elements (rows and columns) in the Phased Array Antenna (PAA). This sector-based
+        // approach uses the antenna array dimensions to determine scanning resolution.
+        double txZenithStep = 180 / ((txNumRows > 1 ? m_oversamplingFactor : 1) * txNumRows);
+        double txSectorStep = 1.0 / (txNumCols > 1 ? m_oversamplingFactor : 1);
+        double rxZenithStep = 180 / ((rxNumRows > 1 ? m_oversamplingFactor : 1) * rxNumRows);
+        double rxSectorStep = 1.0 / (rxNumCols > 1 ? m_oversamplingFactor : 1);
 
-                    Ptr<SpectrumSignalParameters> rxParams =
-                        gnbThreeGppSpectrumPropModel->CalcRxPowerSpectralDensity(
-                            fakeParams,
-                            gnbSpectrumPhy->GetMobility(),
-                            ueSpectrumPhy->GetMobility(),
-                            gnbSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>(),
-                            ueSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>());
+        std::cout << txSectorStep << std::endl;
+        std::cout << rxSectorStep << std::endl;
 
-                    // TR++
-                    size_t nbands = rxParams->psd->GetSpectrumModel()->GetNumBands();
-                    double power = Sum(*(rxParams->psd)) / nbands;
+        // Scan through zenith angles
+        for (double txZenith = 0; txZenith < 180; txZenith += txZenithStep)
+        {
+            // Calculate beam elevation to center it into the middle of the wedge, and not at the
+            // start
+            double txTheta = txZenith + txZenithStep * 0.5;
 
-                    NS_LOG_LOGIC(
-                        " Rx power: "
-                        << power << " txTheta " << txTheta << " rxTheta " << rxTheta
-                        << " tx sector "
-                        << (M_PI * static_cast<double>(txSector) / static_cast<double>(txNumCols) -
-                            0.5 * M_PI) /
-                               M_PI * 180
-                        << " rx sector "
-                        << (M_PI * static_cast<double>(rxSector) / static_cast<double>(rxNumCols) -
-                            0.5 * M_PI) /
-                               M_PI * 180);
+            // Scan through sectors
+            for (double txSector = 0; txSector < txNumCols;
+                 txSector += txSectorStep) // TR++ Modif good // Normally 10
+            {
+                NS_ASSERT(txSector < UINT16_MAX);
 
-                    if (max + 1.5e-30 <
-                        power) // TR++ Added temporarily to avoid the symmetry problem
+                // Use the original SetSector method for sector-based beamforming
+                gnbSpectrumPhy->GetBeamManager()->SetSector(txSector, txTheta);
+                PhasedArrayModel::ComplexVector txW =
+                    gnbSpectrumPhy->GetBeamManager()->GetCurrentBeamformingVector();
+
+                if (maxTxW.GetSize() == 0)
+                {
+                    maxTxW = txW; // initialize maxTxW
+                }
+
+                // Scan through RX zenith angles
+                for (double rxZenith = 0; rxZenith < 180; rxZenith += rxZenithStep)
+                {
+                    // Calculate beam elevation to center it into the middle of the wedge, and not
+                    // at the start
+                    double rxTheta = rxZenith + rxZenithStep * 0.5;
+
+                    // Scan through RX sectors
+                    for (double rxSector = 0; rxSector < rxNumCols; rxSector += rxSectorStep)
                     {
-                        max = power;
-                        maxTxSector = txSector;
-                        maxRxSector = rxSector;
-                        maxTxTheta = txTheta;
-                        maxRxTheta = rxTheta;
-                        maxTxW = txW;
-                        maxRxW = rxW;
-                        // std::cout << "max power: " << max << " maxTxSector " << maxTxSector
-                        //           << " maxRxSector " << maxRxSector << " maxTxTheta " <<
-                        //           maxTxTheta
-                        //           << " maxRxTheta " << maxRxTheta << std::endl;
+                        NS_ASSERT(rxSector < UINT16_MAX);
+
+                        // Use the original SetSector method for sector-based beamforming
+                        ueSpectrumPhy->GetBeamManager()->SetSector(rxSector, rxTheta);
+                        PhasedArrayModel::ComplexVector rxW =
+                            ueSpectrumPhy->GetBeamManager()->GetCurrentBeamformingVector();
+
+                        if (maxRxW.GetSize() == 0)
+                        {
+                            maxRxW = rxW; // initialize maxRxW
+                        }
+
+                        NS_ABORT_MSG_IF(
+                            txW.GetSize() == 0 || rxW.GetSize() == 0,
+                            "Beamforming vectors must be initialized in order to calculate "
+                            "the long term matrix.");
+
+                        Ptr<SpectrumSignalParameters> rxParams =
+                            gnbThreeGppSpectrumPropModel->CalcRxPowerSpectralDensity(
+                                fakeParams,
+                                gnbSpectrumPhy->GetMobility(),
+                                ueSpectrumPhy->GetMobility(),
+                                gnbSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>(),
+                                ueSpectrumPhy->GetAntenna()->GetObject<PhasedArrayModel>());
+
+                        size_t nbands = rxParams->psd->GetSpectrumModel()->GetNumBands();
+                        double power = Sum(*(rxParams->psd)) / nbands;
+
+                        NS_LOG_LOGIC(" Rx power: " << power << " txTheta " << txTheta << " rxTheta "
+                                                   << rxTheta << " tx sector "
+                                                   << (M_PI * static_cast<double>(txSector) /
+                                                           static_cast<double>(txNumCols) -
+                                                       0.5 * M_PI) /
+                                                          M_PI * 180
+                                                   << " rx sector "
+                                                   << (M_PI * static_cast<double>(rxSector) /
+                                                           static_cast<double>(rxNumCols) -
+                                                       0.5 * M_PI) /
+                                                          M_PI * 180);
+
+                        double delta = power - max;
+                        // Handle numerical precision to avoid floating-point comparison issues
+                        if (delta > max * 1e-6)
+                        {
+                            max = power;
+                            maxTxSector = static_cast<uint16_t>(txSector);
+                            maxRxSector = static_cast<uint16_t>(rxSector);
+                            maxTxTheta = txTheta;
+                            maxRxTheta = rxTheta;
+                            maxTxW = txW;
+                            maxRxW = rxW;
+                        }
                     }
                 }
             }
@@ -225,7 +427,11 @@ CellScanBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectrum
         << (M_PI * static_cast<double>(maxRxSector) / static_cast<double>(rxNumCols) - 0.5 * M_PI) /
                M_PI * 180);
 
-    // TR++
+    // Trace callback to log beamforming results for analysis
+    // This triggers the LogBeamforming function with gNB ID, UE ID, power, and beamforming vectors
+    // Please note that the beamforming is also performed between gNBs so this should be adapted to
+    // handle that. However, this is not needed for the current use case. Basically just change the
+    // signature to use Tx and Rx instead of gnbId and ueId.
     m_beamformingPerformed(gnbSpectrumPhy->GetDevice()->GetNode()->GetId(),
                            ueSpectrumPhy->GetDevice()->GetNode()->GetId(),
                            max,
@@ -748,5 +954,162 @@ KroneckerQuasiOmniBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& g
         }
     }
     return BeamformingVectorPair(std::make_pair(gnbBfv, ueBfv));
+}
+
+// Getter and setter methods for dual-mode beamforming attributes
+bool
+CellScanBeamforming::GetUseAngularScanning() const
+{
+    return m_useAngularScanning;
+}
+
+void
+CellScanBeamforming::SetUseAngularScanning(bool useAngular)
+{
+    m_useAngularScanning = useAngular;
+}
+
+double
+CellScanBeamforming::GetTxZenithStep() const
+{
+    return m_txZenithStep;
+}
+
+void
+CellScanBeamforming::SetTxZenithStep(double step)
+{
+    m_txZenithStep = step;
+}
+
+double
+CellScanBeamforming::GetRxZenithStep() const
+{
+    return m_rxZenithStep;
+}
+
+void
+CellScanBeamforming::SetRxZenithStep(double step)
+{
+    m_rxZenithStep = step;
+}
+
+double
+CellScanBeamforming::GetTxAzimuthStep() const
+{
+    return m_txAzimuthStep;
+}
+
+void
+CellScanBeamforming::SetTxAzimuthStep(double step)
+{
+    m_txAzimuthStep = step;
+}
+
+double
+CellScanBeamforming::GetRxAzimuthStep() const
+{
+    return m_rxAzimuthStep;
+}
+
+void
+CellScanBeamforming::SetRxAzimuthStep(double step)
+{
+    m_rxAzimuthStep = step;
+}
+
+double
+CellScanBeamforming::GetTxZenithStart() const
+{
+    return m_txZenithStart;
+}
+
+void
+CellScanBeamforming::SetTxZenithStart(double start)
+{
+    m_txZenithStart = start;
+}
+
+double
+CellScanBeamforming::GetTxZenithEnd() const
+{
+    return m_txZenithEnd;
+}
+
+void
+CellScanBeamforming::SetTxZenithEnd(double end)
+{
+    m_txZenithEnd = end;
+}
+
+double
+CellScanBeamforming::GetRxZenithStart() const
+{
+    return m_rxZenithStart;
+}
+
+void
+CellScanBeamforming::SetRxZenithStart(double start)
+{
+    m_rxZenithStart = start;
+}
+
+double
+CellScanBeamforming::GetRxZenithEnd() const
+{
+    return m_rxZenithEnd;
+}
+
+void
+CellScanBeamforming::SetRxZenithEnd(double end)
+{
+    m_rxZenithEnd = end;
+}
+
+double
+CellScanBeamforming::GetTxAzimuthStart() const
+{
+    return m_txAzimuthStart;
+}
+
+void
+CellScanBeamforming::SetTxAzimuthStart(double start)
+{
+    m_txAzimuthStart = start;
+}
+
+double
+CellScanBeamforming::GetTxAzimuthEnd() const
+{
+    return m_txAzimuthEnd;
+}
+
+void
+CellScanBeamforming::SetTxAzimuthEnd(double end)
+{
+    m_txAzimuthEnd = end;
+}
+
+double
+CellScanBeamforming::GetRxAzimuthStart() const
+{
+    return m_rxAzimuthStart;
+}
+
+void
+CellScanBeamforming::SetRxAzimuthStart(double start)
+{
+    m_rxAzimuthStart = start;
+}
+
+double
+CellScanBeamforming::GetRxAzimuthEnd() const
+{
+    return m_rxAzimuthEnd;
+}
+
+void
+CellScanBeamforming::SetRxAzimuthEnd(double end)
+{
+    m_rxAzimuthEnd = end;
 }
 } // namespace ns3

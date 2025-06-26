@@ -228,9 +228,8 @@ set(source_files
     utils/channels/nyu/nyu-spectrum-propagation-loss-model.cc
     utils/channels/nyu/nyu-propagation-loss-model.cc
     utils/channels/nyu/nyu-channel-model.cc
-    utils/channels/external-mpcs/qd-channel-model.cc
-    utils/channels/external-mpcs/qd-channel-utils.cc
-    utils/channels/external-mpcs/qd-spectrum-propagation-loss-model.cc
+    utils/channels/trace-based/traces-channel-model.cc
+    utils/channels/trace-based/traces-spectrum-propagation-loss-model.cc
 )
 
 set(header_files
@@ -439,9 +438,8 @@ set(header_files
     utils/channels/nyu/nyu-spectrum-propagation-loss-model.h
     utils/channels/nyu/nyu-propagation-loss-model.h
     utils/channels/nyu/nyu-channel-model.h
-    utils/channels/external-mpcs/qd-channel-model.h
-    utils/channels/external-mpcs/qd-channel-utils.h
-    utils/channels/external-mpcs/qd-spectrum-propagation-loss-model.h
+    utils/channels/trace-based/traces-channel-model.h
+    utils/channels/trace-based/traces-spectrum-propagation-loss-model.h
 )
 
 set(test_sources

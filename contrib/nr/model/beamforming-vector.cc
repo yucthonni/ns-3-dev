@@ -1,5 +1,6 @@
 // Copyright (c) 2020 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
+// Modified by NIST <tanguy.ropitault@nist.gov>
 // SPDX-License-Identifier: GPL-2.0-only
 
 #include "beamforming-vector.h"
@@ -60,13 +61,10 @@ CreateDirectionalBfv(const Ptr<const UniformPlanarArray>& antenna, double sector
     UintegerValue uintValueNumColumns;
     antenna->GetAttribute("NumColumns", uintValueNumColumns);
 
-    // double hAngle_radian =
-    //     M_PI * (sector / static_cast<double>(uintValueNumColumns.Get())) - 0.5 * M_PI;
-    // TR++
-    double hAngle_radian = 2.0 * M_PI * (sector / static_cast<double>(uintValueNumColumns.Get()));
-    // std::cout << "hAngle_radian: " << hAngle_radian << std::endl; TR++
-    // std::cout << "hAngle_deg: " << hAngle_radian * 180 / M_PI << std::endl;
-    // std::cout << "vangle: " << elevation << std::endl;
+    // Original 5G LENA code (commented out for reference):
+    double hAngle_radian =
+        M_PI * (sector / static_cast<double>(uintValueNumColumns.Get())) - 0.5 * M_PI;
+
     double vAngle_radian = elevation * M_PI / 180;
     uint16_t size = antenna->GetNumElems();
     PhasedArrayModel::ComplexVector tempVector(size);
@@ -110,6 +108,37 @@ CreateDirectionalBfvAz(const Ptr<const UniformPlanarArray>& antenna, double azim
                  sin(vAngle_radian) * sin(hAngle_radian) * loc.y + cos(vAngle_radian) * loc.z);
             tempVector[ind] = exp(std::complex<double>(0, phase)) * power;
         }
+    }
+    return tempVector;
+}
+
+// The code below is basically the same as the one above- We just wanted to clearly separate our
+// code
+PhasedArrayModel::ComplexVector
+CreateDirectionalBfvFromAngles(const Ptr<const UniformPlanarArray>& antenna,
+                               double azimuthAngle,
+                               double zenithAngle)
+{
+    // double hAngle_radian = 2.0 * M_PI * (sector / static_cast<double>(360));
+
+    // Convert angles from degrees to radians
+    double hAngle_radian = azimuthAngle * M_PI / 180.0;
+    double vAngle_radian = zenithAngle * M_PI / 180.0;
+
+    uint16_t size = antenna->GetNumElems();
+    auto numAnalogBeamElements = (antenna->GetVElemsPerPort() * antenna->GetHElemsPerPort());
+    auto power = 1.0 / sqrt(numAnalogBeamElements);
+
+    PhasedArrayModel::ComplexVector tempVector(size);
+
+    for (auto ind = 0; ind < size; ind++)
+    {
+        Vector loc = antenna->GetElementLocation(ind);
+        double phase =
+            -2 * M_PI *
+            (sin(vAngle_radian) * cos(hAngle_radian) * loc.x +
+             sin(vAngle_radian) * sin(hAngle_radian) * loc.y + cos(vAngle_radian) * loc.z);
+        tempVector[ind] = (exp(std::complex<double>(0, phase)) * power);
     }
     return tempVector;
 }

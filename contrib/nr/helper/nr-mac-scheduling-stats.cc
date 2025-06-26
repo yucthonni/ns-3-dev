@@ -45,7 +45,7 @@ NrMacSchedulingStats::GetTypeId()
             .AddConstructor<NrMacSchedulingStats>()
             .AddAttribute("DlOutputFilename",
                           "Name of the file where the downlink results will be saved.",
-                          StringValue("NrDlMacStats.txt"),
+                          StringValue("Results/NrDlMacStats.txt"),
                           MakeStringAccessor(&NrMacSchedulingStats::SetDlOutputFilename),
                           MakeStringChecker())
             .AddAttribute("UlOutputFilename",

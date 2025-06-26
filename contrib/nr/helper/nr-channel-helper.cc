@@ -1,6 +1,7 @@
 // Copyright (c) 2024 LASSE / Universidade Federal do Pará (UFPA)
 // Copyright (c) 2024 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
+// Modified by NIST <tanguy.ropitault@nist.gov>
 // SPDX-License-Identifier: GPL-2.0-only
 // Author: João Albuquerque <joao.barbosa.albuquerque@itec.ufpa.br>
 
@@ -15,8 +16,6 @@
 #include "ns3/nyu-spectrum-propagation-loss-model.h"
 #include "ns3/object-factory.h"
 #include "ns3/pointer.h"
-#include "ns3/qd-channel-model.h"
-#include "ns3/qd-spectrum-propagation-loss-model.h"
 #include "ns3/simulator.h"
 #include "ns3/string.h"
 #include "ns3/three-gpp-channel-model.h"
@@ -24,6 +23,8 @@
 #include "ns3/three-gpp-spectrum-propagation-loss-model.h"
 #include "ns3/three-gpp-v2v-channel-condition-model.h"
 #include "ns3/three-gpp-v2v-propagation-loss-model.h"
+#include "ns3/traces-channel-model.h"
+#include "ns3/traces-spectrum-propagation-loss-model.h"
 #include "ns3/two-ray-spectrum-propagation-loss-model.h"
 
 namespace ns3
@@ -94,8 +95,8 @@ NrChannelHelper::GetTypeId()
                                 "NYU",
                                 NrChannelHelper::ChannelModel::TwoRay,
                                 "TwoRay",
-                                NrChannelHelper::ChannelModel::QD,
-                                "QD")); // <-- Added QD here
+                                NrChannelHelper::ChannelModel::Traces,
+                                "Traces"));
     return tid;
 }
 
@@ -210,10 +211,8 @@ NrChannelHelper::ConfigureSpectrumFactory(TypeId spectrumTypeId)
 std::tuple<TypeId, TypeId, TypeId>
 NrChannelHelper::GetBandTypeIdInfo() const
 {
-    // auto currentChannel =
-    //     (m_channelModel == ChannelModel::TwoRay) ? ChannelModel::ThreeGpp : m_channelModel;
     auto currentChannel =
-        ((m_channelModel == ChannelModel::TwoRay) || (m_channelModel == ChannelModel::QD))
+        ((m_channelModel == ChannelModel::TwoRay) || (m_channelModel == ChannelModel::Traces))
             ? ChannelModel::ThreeGpp
             : m_channelModel;
     if (m_supportedCombinations.find(std::make_tuple(currentChannel, m_scenario)) ==
@@ -284,10 +283,8 @@ std::pair<TypeId, TypeId>
 NrChannelHelper::GetPropagationTypeId() const
 {
     // FTR uses the same propagation model as 3GPP
-    // auto currentModel =
-    //     (m_channelModel == ChannelModel::TwoRay) ? ChannelModel::ThreeGpp : m_channelModel;
     auto currentModel =
-        ((m_channelModel == ChannelModel::TwoRay) || (m_channelModel == ChannelModel::QD))
+        ((m_channelModel == ChannelModel::TwoRay) || (m_channelModel == ChannelModel::Traces))
             ? ChannelModel::ThreeGpp
             : m_channelModel;
     static std::map<std::pair<ChannelModel, Scenario>, std::pair<TypeId, TypeId>> lookupTable{
