@@ -1,234 +1,612 @@
-# The Network Simulator, Version 3
+# 5G NR Traces Channel Model Simulation
 
-[![codecov](https://codecov.io/gh/nsnam/ns-3-dev-git/branch/master/graph/badge.svg)](https://codecov.io/gh/nsnam/ns-3-dev-git/branch/master/)
-[![Gitlab CI](https://gitlab.com/nsnam/ns-3-dev/badges/master/pipeline.svg)](https://gitlab.com/nsnam/ns-3-dev/-/pipelines)
-[![Github CI](https://github.com/nsnam/ns-3-dev-git/actions/workflows/per_commit.yml/badge.svg)](https://github.com/nsnam/ns-3-dev-git/actions)
+This repository hosts the implementation of 5G NR ns-3 simulation using trace-based channel modeling. The simulation leverages pre-computed channel traces from ray-tracing software or measurement campaigns to provide high-fidelity channel representation for 5G New Radio (NR) systems.
 
-[![Latest Release](https://gitlab.com/nsnam/ns-3-dev/-/badges/release.svg)](https://gitlab.com/nsnam/ns-3-dev/-/releases)
-
-## License
-
-This software is licensed under the terms of the GNU General Public License v2.0 only (GPL-2.0-only).
-See the LICENSE file for more details.
+*This repository enables the reproduction of results from the paper "Enabling Site-Specific Cellular Network Simulation Through Ray-Tracing-Driven ns-3" by Tanguy Ropitault, Matteo Bordin, Paolo Testolina, Michele Polese, Pedram Johari, Nada Golmie, and Tommaso Melodia, submitted to CCNC 26.*
 
 ## Table of Contents
 
-* [Overview](#overview-an-open-source-project)
-* [Building ns-3](#building-ns-3)
-* [Testing ns-3](#testing-ns-3)
-* [Running ns-3](#running-ns-3)
-* [ns-3 Documentation](#ns-3-documentation)
-* [Working with the Development Version of ns-3](#working-with-the-development-version-of-ns-3)
-* [Contributing to ns-3](#contributing-to-ns-3)
-* [Reporting Issues](#reporting-issues)
-* [Asking Questions](#asking-questions)
-* [ns-3 App Store](#ns-3-app-store)
+1. [Repository Dependencies and Origins](#repository-dependencies-and-origins)
+2. [Prerequisites and Building](#prerequisites-and-building)
+3. [Quick Start](#quick-start)
+4. [Overview of the Implementation](#overview-of-the-implementation)
+5. [Traces Channel Model Architecture](#traces-channel-model-architecture)
+6. [Reproducing Paper Results](#reproducing-paper-results)
+7. [Detailed Usage and Parameters](#detailed-usage-and-parameters)
+8. [Beamforming Configuration](#beamforming-configuration)
+9. [Output Files and Analysis](#output-files-and-analysis)
+10. [Contributing](#contributing)
+11. [References](#references)
+12. [License](#license)
+13. [Authors](#authors)
+14. [Contact](#contact)
 
-> **NOTE**: Much more substantial information about ns-3 can be found at
-<https://www.nsnam.org>
+## Repository Dependencies and Origins
 
-## Overview: An Open Source Project
+This repository reuses the **5G LENA repository (v4.0)** ([https://gitlab.com/cttc-lena/nr](https://gitlab.com/cttc-lena/nr)) extended to support trace-based channel model, which requires **ns-3 version 3.44 (included in this repository)**. The 5G LENA module provides the core NR (New Radio) functionality for 5G simulations.
 
-ns-3 is a free open source project aiming to build a discrete-event
-network simulator targeted for simulation research and education.
-This is a collaborative project; we hope that
-the missing pieces of the models we have not yet implemented
-will be contributed by the community in an open collaboration
-process. If you would like to contribute to ns-3, please check
-the [Contributing to ns-3](#contributing-to-ns-3) section below.
+The **trace-based channel modeling implementation** is based on the **ns-3 QD app code** ([https://github.com/signetlabdei/qd-channel](https://github.com/signetlabdei/qd-channel)) and has been modified by NIST and Northeastern University for enhanced functionality and integration with the 5G LENA NR module.
 
-This README excerpts some details from a more extensive
-tutorial that is maintained at:
-<https://www.nsnam.org/documentation/latest/>
+## Prerequisites and Building
 
-## Building ns-3
+### System Requirements
 
-The code for the framework and the default models provided
-by ns-3 is built as a set of libraries. User simulations
-are expected to be written as simple programs that make
-use of these ns-3 libraries.
+* **ns-3**: Version 3.44 or compatible (included in this repository)
+* **5G LENA**: Version 5g-lena-v4.0 (included in this repository)
 
-To build the set of default libraries and the example
-programs included in this package, you need to use the
-`ns3` tool. This tool provides a Waf-like API to the
-underlying CMake build manager.
-Detailed information on how to use `ns3` is included in the
-[quick start guide](doc/installation/source/quick-start.rst).
+### Building the Code
 
-Before building ns-3, you must configure it.
-This step allows the configuration of the build options,
-such as whether to enable the examples, tests and more.
+1. **Clone the repository**:
+   ```bash
+   git clone <repository-url>
+   cd ns-3-dev
+   ```
 
-To configure ns-3 with examples and tests enabled,
-run the following command on the ns-3 main directory:
+2. **Configure the build**:
+   ```bash
+   ./ns3 configure --enable-examples --enable-tests
+   ```
 
-```shell
-./ns3 configure --enable-examples --enable-tests
+3. **Build the code**:
+   ```bash
+   ./ns3 build
+   ```
+
+4. **Verify the build**:
+   ```bash
+   ./ns3 run "traces-channel-example --PrintHelp"
+   ```
+
+## Quick Start
+
+To start the simulation with default settings:
+
+```bash
+./ns3 run "traces-channel-example"
 ```
 
-Then, build ns-3 by running the following command:
+## Overview of the Implementation
 
-```shell
-./ns3 build
+The traces channel model implementation mainly consists of:
+
+* **Traces Channel Model (`contrib/nr/model/traces-channel-model.h/cc`)**: A matrix-based channel model that reads pre-computed channel traces from files
+* **Traces Spectrum Propagation Loss Model (`contrib/nr/model/traces-spectrum-propagation-loss-model.h/cc`)**: Handles spectrum propagation and beamforming calculations
+* **Traces Channel Example (`contrib/nr/examples/traces-channel-example.cc`)**: A comprehensive simulation example demonstrating the complete setup of a trace-based channel model
+
+## Traces Channel Model Architecture
+
+The traces channel model reads channel data from structured files located in the `contrib/nr/utils/channels/trace-based/Scenarios/` folder. Each scenario is having the same organization described below:
+
+```
+Scenarios/
+├── ScenarioName/
+│   ├── Input/
+│   │   └── paraCfgCurrent.txt          # Simulation parameters such a nb of timesteps and timestep duration
+│   └── Output/
+│       ├── Ns3/
+│       │   ├── NodesPosition/
+│       │   │   ├── device0.csv         # Device 0 positions for the entire simulation
+│       │   │   ├── device1.csv         # Device 1 positions for the entire simulation
+│       │   │   └── ...
+│       │   └── Channel/
+│       │       ├── Tx0_Rx1.txt         # Channel traces for device 0 device 1
+│       │       ├── Tx1_Rx0.txt         # Channel traces for device 1 device 0
+│       │       └── ...
 ```
 
-By default, the build artifacts will be stored in the `build/` directory.
+The organization and format is inherited from the NIST Q-D realization software format ([https://github.com/wigig-tools/qd-realization](https://github.com/wigig-tools/qd-realization)). To generate the channels used in this repository, we used Sionna. Please check the following tutorial for more information: ([https://MISSINGLINKFROMNORTHEASTERN](https://...))
 
-### Supported Platforms
+### Channel Trace File Format
 
-The current codebase is expected to build and run on the
-set of platforms listed in the [release notes](RELEASE_NOTES.md)
-file.
+Each trace file Txy_Rxz.txt contains multipath component (MPC) data for each timestep:
+- Number of MPCs
+- Path delays (seconds)
+- Path gains (dB)
+- Path phases (radians)
+- Elevation angles of departure (AoD)
+- Azimuth angles of departure (AoD)
+- Elevation angles of arrival (AoA)
+- Azimuth angles of arrival (AoA)
 
-Other platforms may or may not work: we welcome patches to
-improve the portability of the code to these other platforms.
+## Reproducing Paper Results
 
-## Testing ns-3
+This repository enables the reproduction of results from the paper "Enabling Site-Specific Cellular Network Simulation Through Ray-Tracing-Driven ns-3" submitted to CCNC 26. The following commands reproduce the specific results presented in the paper.
 
-ns-3 contains test suites to validate the models and detect regressions.
-To run the test suite, run the following command on the ns-3 main directory:
+### Section IV.A - Beamforming Analysis (Etoile Scenario)
 
-```shell
-./test.py
+**Scenario Summary:**  
+A single gNB operating at 28 GHz with 100 MHz bandwidth is mounted atop the Arc de Triomphe (Place de l'Étoile, Paris), and a UE at 1.5 m height traverses a circular arc around it. Over 8.9 s, the UE moves which varies the gNB's azimuth Angle of Departure from 0 ° to 90 °, stepping 1 ° every 100 ms. Two gNB phased-array configurations (16×16 and 16×128) and a UE 4×4 array are evaluated. The channel has been generated using Sionna as depicted in this tutorial: ([https://MISSINGLINKFROMNORTHEASTERN](https://...))
+
+To reproduce the beamforming results for the 16x16 gNB:
+
+```bash
+./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=1 --gnbNumRows=16 --gnbNumColumns=16 --ueNumRows=4 --ueNumColumns=4 --tracesScenario=Etoile --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=1.0 --rxAzimuthStep=90.0 --txZenithStart=127.5 --txZenithEnd=128.5 --rxZenithStart=52.5 --rxZenithEnd=53.5"
 ```
 
-More information about ns-3 tests is available in the
-[test framework](doc/manual/source/test-framework.rst) section of the manual.
+To reproduce the beamforming results for the 16x128 gNB:
 
-## Running ns-3
-
-On recent Linux systems, once you have built ns-3 (with examples
-enabled), it should be easy to run the sample programs with the
-following command, such as:
-
-```shell
-./ns3 run simple-global-routing
+```bash
+./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=1 --gnbNumRows=16 --gnbNumColumns=128 --ueNumRows=4 --ueNumColumns=4 --tracesScenario=Etoile --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=1.0 --rxAzimuthStep=90.0 --txZenithStart=127.5 --txZenithEnd=128.5 --rxZenithStart=52.5 --rxZenithEnd=53.5"
 ```
 
-That program should generate a `simple-global-routing.tr` text
-trace file and a set of `simple-global-routing-xx-xx.pcap` binary
-PCAP trace files, which can be read by `tcpdump -n -tt -r filename.pcap`.
-The program source can be found in the `examples/routing` directory.
+It is worth mentionning that the tx parameters always refer to the gNB(s) ones and thus the rx parameters correspond to the UE(s) ones.
 
-## Running ns-3 from Python
+**Configuration Details:**
+- **Zenith Angle Limitation**: We limit the zenith angles to specific ranges (TX: 127.5 ° to 128.5 °, RX: 52.5 ° to 53.5 °) to accelerate simulation runtime by fixing the zenith angles to the Angle of Departure and Angle of Arrival for the gNB and UE respectively,and focusing on azimuth scanning
+- **Azimuth Resolution**: TX azimuth step is set to 1 ° for high precision, while RX azimuth step is 90 ° for the UE
+- **Direction**: Results are presented from gNB to UE, hence the different azimuth step configurations
 
-If you do not plan to modify ns-3 upstream modules, you can get
-a pre-built version of the ns-3 python bindings. It is recommended
-to create a python virtual environment to isolate different application
-packages from system-wide packages (installable via the OS package managers).
+**Output Files for Analysis:**
+- **Beamforming results**: Check `Results/Etoile/traces/GnodeB_16x16_UE_4x4/beamformingVector.csv` (or `GnodeB_16x128_UE_4x4/` for 16x128 gNB)
+- **Detailed file descriptions**: See the [Output Files and Analysis](#output-files-and-analysis) section below
 
-```shell
-python3 -m venv ns3env
-source ./ns3env/bin/activate
-pip install ns3
+### Section IV.B - Performance Analysis (Boston Street Canyon Scenario)
+
+**Scenario Summary:**  
+A single gNB equipped with a 16×16 planar phased-array antenna is mounted at 10 m height in an urban micro (UMi) street-canyon "Boston Twin" environment. A UE carrying a 4×4 planar array at 1.5 m height moves at a pedestrian speed of 1.5 m/s along a 375 m trajectory over 250 s, passing through three regions: Street A (0–67 s, NLoS), Street B (67–182 s, primarily LoS except 172–180 s), and Street C (182–250 s, NLoS). Performance is compared between the trace-based channel model generated using Sionna as described in this tutorial ([https://MISSINGLINKFROMNORTHEASTERN](https://...)), and the 3GPP TR 38.901 UMi statistical model. Traffic is a constant-bitrate UDP stream at 122 Mb/s (1500 B packets), and beamforming training occurs every 100 ms with a 10 ° scan resolution in both azimuth and elevation at the transmitter and 20 ° in azimuth and 10 ° in elevation at the receiver.
+
+To reproduce the performance analysis results presented in Section IV.B of the paper for the trace-based channel model:
+
+```bash
+./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=1 --gnbNumRows=16 --gnbNumColumns=16 --ueNumRows=4 --ueNumColumns=4 --tracesScenario=BostonStreetCanyon --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=10.0 --rxAzimuthStep=20.0 --txZenithStart=0 --txZenithEnd=180 --rxZenithStart=0 --rxZenithEnd=180"
 ```
 
-If you do not have `pip`, check their documents
-on [how to install it](https://pip.pypa.io/en/stable/installation/).
-
-After installing the `ns3` package, you can then create your simulation python script.
-Below is a trivial demo script to get you started.
-
-```python
-from ns import ns
-
-ns.LogComponentEnable("Simulator", ns.LOG_LEVEL_ALL)
-
-ns.Simulator.Stop(ns.Seconds(10))
-ns.Simulator.Run()
-ns.Simulator.Destroy()
+To reproduce the performance analysis results presented in Section IV.B of the paper for the 3GPP channel model:
+```bash
+ ./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=1 --gnbNumRows=16 --gnbNumColumns=16 --ueNumRows=4 --ueNumColumns=4  --tracesScenario=BostonStreetCanyon --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=10.0 --rxAzimuthStep=20.0 --txZenithStart=0 --txZenithEnd=180 --rxZenithStart=0 --rxZenithEnd=180 --channelModel=3GPP"
 ```
 
-The simulation will take a while to start, while the bindings are loaded.
-The script above will print the logging messages for the called commands.
+**Configuration Details:**
+- **Full Angular Search**: Complete zenith angle range (0°-180°) for comprehensive analysis
+- **Balanced Precision**: Beamforming parameters optimized for good precision while maintaining reasonable runtime
 
-Use `help(ns)` to check the prototypes for all functions defined in the
-ns3 namespace. To get more useful results, query specific classes of
-interest and their functions e.g., `help(ns.Simulator)`.
+**Output Files for Analysis:**
+- **SINR measurements**: Check `Results/BostonStreetCanyon/traces/GnodeB_16x16_UE_4x4/sinr_trace.csv`
+- **End-to-end performance**: Check `Results/BostonStreetCanyon/traces/GnodeB_16x16_UE_4x4/flow_stats.csv` for throughput, delay, and PDR metrics
+- **Detailed file descriptions**: See the [Output Files and Analysis](#output-files-and-analysis) section below
 
-Smart pointers `Ptr<>` can be differentiated from objects by checking if
-`__deref__` is listed in `dir(variable)`. To dereference the pointer,
-use `variable.__deref__()`.
 
-Most ns-3 simulations are written in C++ and the documentation is
-oriented towards C++ users. The ns-3 tutorial programs (`first.cc`,
-`second.cc`, etc.) have Python equivalents, if you are looking for
-some initial guidance on how to use the Python API. The Python
-API may not be as full-featured as the C++ API, and an API guide
-for what C++ APIs are supported or not from Python do not currently exist.
-The project is looking for additional Python maintainers to improve
-the support for future Python users.
+### Device ID Generation and Mapping Process
 
-## ns-3 Documentation
+The traces channel model maps trace data to ns-3 simulation entities using a sequential ID assignment system:
 
-Once you have verified that your build of ns-3 works by running
-the `simple-global-routing` example as outlined in the [running ns-3](#running-ns-3)
-section, it is quite likely that you will want to get started on reading
-some ns-3 documentation.
+**General Mapping Concept:**
+- **Position files**: `deviceX.csv` files contain device positions, where X is the device ID
+- **Channel files**: `TxX_RxY.txt` files contain channel data between device X (transmitter) and device Y (receiver)
+- **Sequential mapping**: Trace device IDs directly map to ns-3 node IDs (device5.csv → Node ID 5)
 
-All of that documentation should always be available from
-the ns-3 website: <https://www.nsnam.org/documentation/>.
+**Sequential ID Assignment:**
 
-This documentation includes:
+**Single gNB with Single UE:**
+```bash
+--gNbNum=1 --ueNumPergNb=1
+```
+- gNB: Node ID 0 (maps to `device0.csv`)
+- UE: Node ID 1 (maps to `device1.csv`)
+- Required channel files: `Tx0_Rx1.txt`, `Tx1_Rx0.txt`
 
-* a tutorial
-* a reference manual
-* models in the ns-3 model library
-* a wiki for user-contributed tips: <https://www.nsnam.org/wiki/>
-* API documentation generated using doxygen: this is
-  a reference manual, most likely not very well suited
-  as introductory text:
-  <https://www.nsnam.org/doxygen/index.html>
+**Multiple gNBs and UEs:**
+```bash
+--gNbNum=2 --ueNumPergNb=2
+```
+- gNB 0: Node ID 0 (maps to `device0.csv`)
+- gNB 1: Node ID 1 (maps to `device1.csv`)
+- UE 0 (attached to gNB 0): Node ID 2 (maps to `device2.csv`)
+- UE 1 (attached to gNB 0): Node ID 3 (maps to `device3.csv`)
+- UE 2 (attached to gNB 1): Node ID 4 (maps to `device4.csv`)
+- UE 3 (attached to gNB 1): Node ID 5 (maps to `device5.csv`)
 
-## Working with the Development Version of ns-3
+**Key Rules:**
+- **gNBs**: Node IDs start from 0 and are assigned sequentially
+- **UEs**: Node IDs start after the last gNB ID and are assigned sequentially
+- **Total nodes**: `gNbNum + (gNbNum × ueNumPergNb)`
+- **File naming**: Device files must be named sequentially starting from `device0.csv`
+- **First devices**: The first `gNbNum` devices in the trace scenario are assumed to be gNBs
 
-If you want to download and use the development version of ns-3, you
-need to use the tool `git`. A quick and dirty cheat sheet is included
-in the manual, but reading through the Git
-tutorials found in the Internet is usually a good idea if you are not
-familiar with it.
+## Detailed Usage and Parameters
 
-If you have successfully installed Git, you can get
-a copy of the development version with the following command:
+### Channel Model Configuration
 
-```shell
-git clone https://gitlab.com/nsnam/ns-3-dev.git
+* **`channelModel`**: Channel model to use. Options: `"Traces"` (default) or `"3GPP"`. The Traces model uses pre-computed channel data, while 3GPP uses the standard 3GPP channel model.
+
+* **`tracesScenario`**: Specifies the scenario folder containing the channel traces. Default is `"Etoile"`. Available scenarios include:
+  - `Etoile`
+  - `BostonStreetCanyon`
+
+### Network Topology
+
+* **`gNbNum`**: Number of gNBs (base stations) in the simulation. Default is `1`.
+
+* **`ueNumPergNb`**: Number of UEs per gNB. Default is `1`.
+
+* **`attachmentMode`**: UE-gNB attachment strategy. Options:
+  - `"closest"`: UEs attach to the nearest gNB based on distance
+  - `"id-based"`: UEs attach to gNBs based on their index (UE 0,1 → gNB 0, UE 2,3 → gNB 1, etc.)
+  Default is `"id-based"`.
+
+### Phased Array Antenna (PAA) Configuration
+
+* **`gnbNumRows`**: Number of antenna rows for gNB. Default is `2`.
+
+* **`gnbNumColumns`**: Number of antenna columns for gNB. Default is `16`.
+
+* **`ueNumRows`**: Number of antenna rows for UE. Default is `2`.
+
+* **`ueNumColumns`**: Number of antenna columns for UE. Default is `16`.
+
+**Note**: The antenna configuration significantly impacts beamforming performance and channel capacity. Larger arrays provide better spatial resolution and beamforming gain.
+
+### NR System Parameters
+
+* **`centralFrequencyBand1`**: Operating frequency in Hz. Default is `28e9` (28 GHz).
+
+* **`bandwidthBand1`**: System bandwidth in Hz. Default is `100e6` (100 MHz).
+
+* **`totalTxPower`**: Total transmit power in dBm. Default is `35` dBm.
+
+* **`numerologyBwp1`**: Numerology for bandwidth part 1. Default is `3`.
+
+### Traffic Configuration
+
+* **`lambda`**: Number of UDP packets per second. Default is `1`.
+
+* **`packetSize`**: UDP packet size in bytes. Default is `1500`.
+
+* **`simTime`**: Simulation duration. If not specified, automatically reads from trace files when using Traces channel model.
+
+* **`udpAppStartTime`**: Application start time. Default is `10` ms.
+
+## Beamforming Configuration
+
+The simulation supports two beamforming modes controlled by the `useAngularScanning` parameter:
+
+#### Mode 1: Angular-Based Scanning (`useAngularScanning=true`)
+
+**Command Line Parameters:**
+* **`useAngularScanning`**: Enable angular-based scanning (default: `true`)
+* **`txZenithStep`**: Transmitter zenith angle step size in degrees (default: `10.0`)
+* **`rxZenithStep`**: Receiver zenith angle step size in degrees (default: `10.0`)
+* **`txAzimuthStep`**: Transmitter azimuth angle step size in degrees (default: `10.0`)
+* **`rxAzimuthStep`**: Receiver azimuth angle step size in degrees (default: `10.0`)
+* **`txZenithStart`**: Transmitter zenith angle start in degrees (default: `0.0`)
+* **`txZenithEnd`**: Transmitter zenith angle end in degrees (default: `180.0`)
+* **`rxZenithStart`**: Receiver zenith angle start in degrees (default: `0.0`)
+* **`rxZenithEnd`**: Receiver zenith angle end in degrees (default: `180.0`)
+* **`txAzimuthStart`**: Transmitter azimuth angle start in degrees (default: `0.0`)
+* **`txAzimuthEnd`**: Transmitter azimuth angle end in degrees (default: `360.0`)
+* **`rxAzimuthStart`**: Receiver azimuth angle start in degrees (default: `0.0`)
+* **`rxAzimuthEnd`**: Receiver azimuth angle end in degrees (default: `360.0`)
+
+**Parameter Details:**
+
+**Angle Step Sizes (`*Step` parameters):**
+- **Purpose**: Control beamforming resolution and simulation speed
+- **Range**: 0.1° to 90° (smaller = higher resolution, slower simulation)
+- **Typical values**: 
+  - High precision: 1°-5° (for detailed beamforming analysis)
+  - Balanced: 10°-20° (for general simulations)
+  - Fast simulation: 30°-90° (for quick testing)
+- **Impact**: Smaller steps increase beamforming accuracy but exponentially increase computation time
+
+**Zenith Angle Ranges (`*ZenithStart/End` parameters):**
+- **Purpose**: Control elevation angle scanning range
+- **Coordinate system**: 0° = upward, 90° = horizontal, 180° = downward
+- **Typical configurations**:
+  - **gNB (transmitter)**: 90°-135° (downward-looking, typical for rooftop/base station)
+  - **UE (receiver)**: 45°-90° (upward-looking, typical for ground-level devices)
+  - **Full range**: 0°-180° (complete spherical coverage)
+- **Performance tip**: Limit zenith ranges to physically relevant angles to reduce simulation time
+
+**Azimuth Angle Ranges (`*AzimuthStart/End` parameters):**
+- **Purpose**: Control horizontal angle scanning range
+- **Coordinate system**: 0° = North, 90° = East, 180° = South, 270° = West
+- **Typical configurations**:
+  - **Sector coverage**: 0°-120° (120° sector, typical for sectorized cells)
+  - **Omnidirectional**: 0°-360° (full horizontal coverage)
+  - **Directional**: 45°-135° (specific direction, e.g., street canyon)
+- **Performance tip**: Use sector-based ranges for urban scenarios to focus on relevant directions
+
+**Features:**
+- **Precise Control**: Direct specification of angular search ranges
+- **Performance Optimization**: Limit scanning to physically relevant angles
+- **Scenario Adaptation**: Optimize for specific deployment environments
+- **Reduced Simulation Time**: Focus on relevant angular regions
+
+#### Mode 2: Sector-Based Scanning (`useAngularScanning=false`)
+
+**Command Line Parameters:**
+* **`useAngularScanning`**: Disable angular scanning, use sector-based approach (set to `false`)
+* **`oversamplingFactor`**: Oversampling factor for sector resolution (default: `1`)
+
+**Parameter Details:**
+
+**Oversampling Factor:**
+- **Purpose**: Control sector resolution and beamforming precision
+- **Range**: 1 to 8 (higher = finer resolution, slower simulation)
+- **How it works**: 
+  - Base resolution is determined by antenna array dimensions
+  - Oversampling factor multiplies the base resolution
+  - Example: 4×4 array with oversampling=2 creates 32×32 effective resolution
+- **Typical values**:
+  - **Standard**: 1 (base resolution, fastest)
+  - **Enhanced**: 2-4 (improved precision, moderate speed)
+  - **High precision**: 6-8 (maximum precision, slowest)
+- **Impact**: Higher oversampling provides better beamforming accuracy but increases computation time quadratically
+
+**Sector Division:**
+- **Automatic calculation**: Based on antenna array dimensions (rows × columns)
+- **Zenith sectors**: Number of elevation sectors = `numRows × oversamplingFactor`
+- **Azimuth sectors**: Number of horizontal sectors = `numColumns × oversamplingFactor`
+- **Total sectors**: `(numRows × numColumns) × (oversamplingFactor)²`
+
+**Features:**
+- **5G-LENA Compatibility**: Follows established beamforming methodology
+- **Array-Aware Resolution**: Automatically adapts to antenna array dimensions
+- **Simplified Configuration**: Fewer parameters to configure
+- **Proven Performance**: Well-tested approach in 5G simulations
+- **Predictable Performance**: Consistent simulation time regardless of scenario
+
+#### Beamforming Periodicity
+
+* **`beamformingPeriodicity`**: Beamforming update interval in milliseconds (default: `100`)
+
+**Parameter Details:**
+
+**Beamforming Update Interval:**
+- **Purpose**: Control how frequently beamforming vectors are recalculated
+- **Range**: 10ms to 1000ms (shorter = more responsive, higher overhead)
+- **Typical values**:
+  - **Fast mobility**: 10-50ms (for high-speed scenarios)
+  - **Standard**: 100ms (default, balanced performance)
+  - **Slow mobility**: 200-500ms (for static or slow-moving scenarios)
+  - **Static**: 1000ms (for fixed deployments)
+- **Impact**: Shorter intervals provide better tracking of channel changes but increase computational overhead
+- **Trade-off**: Responsiveness vs. simulation speed
+
+#### Key Differences Between Modes
+
+| Feature | Angular Scanning | Sector Scanning |
+|---------|------------------|-----------------|
+| **Control** | Precise angle ranges | Automatic sector division |
+| **Parameters** | 12 angular parameters | 1 oversampling parameter |
+| **Performance** | Optimized for specific scenarios | General-purpose approach |
+| **Flexibility** | High (custom ranges) | Medium (sector-based) |
+| **Simulation Speed** | Variable (depends on ranges) | Consistent |
+
+#### Critical Azimuth Angle Coverage Difference
+
+**IMPORTANT**: There is a fundamental difference in azimuth angle coverage between the two beamforming methods:
+
+**Angular Scanning (`useAngularScanning=true`):**
+- **Azimuth Range**: **Full 360 degrees** (0°-360°)
+- **Formula**: Direct conversion from degrees to radians: `azimuthAngle * π / 180`
+- **Flexibility**: Configurable start/end angles and step sizes
+- **Advantage**: Complete azimuth coverage with user-defined resolution
+
+**Sector-Based Scanning (`useAngularScanning=false`):**
+- **Azimuth Range**: **NOT 360 degrees** - Limited by antenna array configuration
+- **Formula**: `π * (sector / numColumns) - 0.5 * π`
+- **Typical Range**: -90° to +90° (or similar limited range)
+- **Limitation**: The azimuth coverage is constrained by the number of antenna columns and oversampling factor
+
+**Practical Impact:**
+- **Angular scanning** can scan the full horizontal plane (0°-360°), making it suitable for omnidirectional coverage scenarios
+- **Sector-based scanning** is limited to a subset of azimuth angles, typically covering a forward-looking sector. This is based on the original 5G LENA implementation where beamforming resolution is tied to antenna array dimensions
+- **Coverage scenarios**: Use angular scanning for full 360° coverage, sector-based scanning for directional/sectorized deployments
+
+**Example:**
+- For a 16×16 antenna array with sector-based scanning, the azimuth range might be limited to approximately ±90° around the boresight direction
+- For the same array with angular scanning, you can configure any azimuth range from 0° to 360° with custom step sizes
+
+
+## Output Files and Analysis
+
+The simulation generates results in the following directory structure:
+
+```
+Results/
+├── ScenarioName/
+│   ├── traces/                    # Traces channel model results
+│   │   └── GnodeB_16x16_UE_4x4/        # Antenna configuration subfolder
+│   │       ├── sinr_trace.csv           # SINR measurements over time
+│   │       ├── position_trace.csv       # UE position and velocity data
+│   │       ├── flow_stats.csv           # Flow statistics (throughput, delay, PDR)
+│   │       ├── beamformingVector.csv    # Beamforming vector data
+│   │       ├── NrDlMacStats.txt         # NR downlink MAC layer statistics
+│   │       └── simulation_results.txt   # End-of-simulation summary
+│   └── 3GPP/                           # 3GPP channel model results (if used)
 ```
 
-However, we recommend to follow the GitLab guidelines for starters,
-that includes creating a GitLab account, forking the ns-3-dev project
-under the new account's name, and then cloning the forked repository.
-You can find more information in the [manual](https://www.nsnam.org/docs/manual/html/working-with-git.html).
+**Naming Convention**:
+- **Antenna folders**: `GnodeB_[rows]x[columns]_UE_[rows]x[columns]/`
+- **Example**: `GnodeB_16x16_UE_4x4/` for 16×16 gNB and 4×4 UE arrays
+- **Scenario folders**: Match the `tracesScenario` parameter
+- **Channel model folders**: `traces/` for traces, `3GPP/` for 3GPP model
 
-## Contributing to ns-3
+### Output File Descriptions
 
-The process of contributing to the ns-3 project varies with
-the people involved, the amount of time they can invest
-and the type of model they want to work on, but the current
-process that the project tries to follow is described in the
-[contributing code](https://www.nsnam.org/developers/contributing-code/)
-website and in the [CONTRIBUTING.md](CONTRIBUTING.md) file.
+#### 1. SINR Trace File (`sinr_trace.csv`)
 
-## Reporting Issues
+**Purpose**: Records Signal-to-Interference-plus-Noise Ratio measurements over time
+**Format**: CSV with comma-separated values
+**Columns**:
+- **Time(s)**: Simulation time in seconds
+- **CellId**: gNB cell identifier (0, 1, 2, ...)
+- **RNTI**: Radio Network Temporary Identifier (unique UE identifier)
+- **SINR(dB)**: SINR value in dB (converted from linear scale)
+- **BWP_ID**: Bandwidth Part identifier (usually 0 for single BWP)
 
-If you would like to report an issue, you can open a new issue in the
-[GitLab issue tracker](https://gitlab.com/nsnam/ns-3-dev/-/issues).
-Before creating a new issue, please check if the problem that you are facing
-was already reported and contribute to the discussion, if necessary.
+**Usage**: Analyze link quality, coverage analysis, interference assessment
+**Sample data**:
+```csv
+Time(s),CellId,RNTI,SINR(dB),BWP_ID
+0.1,0,1,15.2,0
+0.2,0,1,14.8,0
+0.3,0,1,16.1,0
+```
 
-## Asking Questions
+#### 2. Position Trace File (`position_trace.csv`)
 
-ns-3 has an official [ns-3-users message board](https://groups.google.com/g/ns-3-users)
-where the community asks questions and share helpful advice.
-Additionally, ns-3 has the [ns-3 Zulip chat](https://ns-3.zulipchat.com/), used to discuss
-development issues and questions among maintainers and the community.
+**Purpose**: Tracks UE mobility and position changes throughout simulation
+**Format**: CSV with comma-separated values
+**Columns**:
+- **Time(s)**: Simulation time in seconds
+- **X**: X-coordinate in meters
+- **Y**: Y-coordinate in meters
+- **Z**: Z-coordinate in meters (height)
+- **VelocityX**: X-component of velocity in m/s
+- **VelocityY**: Y-component of velocity in m/s
+- **VelocityZ**: Z-component of velocity in m/s
 
-Please use the above resources to ask questions about ns-3, rather than creating issues.
+**Usage**: Mobility analysis, coverage mapping, trajectory visualization
+**Sample data**:
+```csv
+Time(s),X,Y,Z,VelocityX,VelocityY,VelocityZ
+0.1,100.5,200.3,1.5,1.2,0.8,0.0
+0.2,101.7,201.5,1.5,1.2,0.8,0.0
+0.3,102.9,202.7,1.5,1.2,0.8,0.0
+```
 
-## ns-3 App Store
+#### 3. Flow Statistics File (`flow_stats.csv`)
 
-The official [ns-3 App Store](https://apps.nsnam.org/) is a centralized directory
-listing third-party modules for ns-3 available on the Internet.
+**Purpose**: Comprehensive traffic flow performance metrics
+**Format**: CSV with comma-separated values
+**Columns**:
+- **Time**: Simulation time in seconds
+- **FlowId**: Unique flow identifier
+- **Throughput(Mbps)**: Average throughput in Mbps
+- **AvgDelay(ms)**: Average packet delay in milliseconds
+- **AvgJitter(ms)**: Average jitter in milliseconds
+- **PDR**: Packet Delivery Ratio (0-1 scale)
+- **InstDelay(ms)**: Instantaneous delay in milliseconds
+- **InstJitter(ms)**: Instantaneous jitter in milliseconds
+- **InstPDR**: Instantaneous Packet Delivery Ratio
 
-More information on how to submit an ns-3 module to the ns-3 App Store is available
-in the [ns-3 App Store documentation](https://www.nsnam.org/docs/contributing/html/external.html).
+**Usage**: Performance analysis, QoS assessment, network optimization
+**Sample data**:
+```csv
+Time,FlowId,Throughput(Mbps),AvgDelay(ms),AvgJitter(ms),PDR,InstDelay(ms),InstJitter(ms),InstPDR
+0.2,1,10.1338,89.9863,1.15643,0.0268374,130.156,1.16384,0.028
+0.3,1,10.0131,138.307,1.15934,0.0271233,227.38,1.16471,0.0276667
+```
+
+#### 4. Beamforming Vector File (`beamformingVector.csv`)
+
+**Purpose**: Records beamforming vector evolution and optimization
+**Format**: CSV with comma-separated values
+**Columns**:
+- **Timestamp**: Simulation time in milliseconds
+- **gNB_ID**: gNB identifier
+- **UE_ID**: UE identifier
+- **Device**: Device type ("TX" for transmitter, "RX" for receiver)
+- **ElementIndex**: Antenna element index (1-based)
+- **Real**: Real part of complex beamforming coefficient
+- **Imag**: Imaginary part of complex beamforming coefficient
+- **Sector**: **Method-dependent field** - meaning varies based on beamforming approach:
+  - **Sector-based scanning** (`useAngularScanning=false`): Sector index (0, 1, 2, ...)
+  - **Angular scanning** (`useAngularScanning=true`): **Direct azimuth angle in degrees** (0-360°)
+  - **Note**: We maintain the same field name for both methods to avoid creating different file formats
+- **Elevation**: Elevation angle in degrees
+- **Power**: Power value
+
+**Usage**: Beamforming analysis, antenna optimization, sector performance
+**Sample data**:
+```csv
+Timestamp,gNB_ID,UE_ID,Device,ElementIndex,Real,Imag,Sector,Elevation,Power
+100,0,1,TX,1,0.707,0.707,15,120.5,1.0
+100,0,1,TX,2,0.707,-0.707,15,120.5,1.0
+100,0,1,RX,1,0.707,0.707,8,45.2,1.0
+```
+
+**Important Note on Sector Field Interpretation:**
+- **For sector-based scanning**: The "Sector" column contains discrete sector indices (0, 1, 2, etc.) that correspond to predefined beamforming sectors based on antenna array dimensions
+- **For angular scanning**: The "Sector" column contains the actual azimuth angle in degrees (e.g., 45.0, 90.0, 135.0) that was used for beamforming
+- **File format consistency**: We chose to maintain the same column name and file format for both methods to ensure compatibility and avoid the complexity of having different output file structures
+
+#### 5. NR Downlink MAC Statistics File (`NrDlMacStats.txt`)
+
+**Purpose**: Records detailed MAC layer statistics for downlink transmissions in 5G NR
+**Format**: Tab-separated values (TSV) with header line starting with '%'
+**Columns**:
+- **time(s)**: Simulation time in seconds
+- **cellId**: Cell identifier (gNB ID)
+- **bwpId**: Bandwidth Part identifier (usually 0 for single BWP)
+- **IMSI**: International Mobile Subscriber Identity (UE identifier)
+- **RNTI**: Radio Network Temporary Identifier (unique UE identifier within cell)
+- **frame**: System frame number
+- **sframe**: Subframe number within the frame
+- **slot**: Slot number within the subframe
+- **symStart**: Starting symbol index within the slot
+- **numSym**: Number of symbols allocated for transmission
+- **harqId**: Hybrid Automatic Repeat Request process identifier
+- **ndi**: New Data Indicator (1 = new data, 0 = retransmission)
+- **rv**: Redundancy Version (0, 1, 2, or 3 for HARQ retransmissions)
+- **mcs**: Modulation and Coding Scheme index
+- **tbSize**: Transport Block size in bits
+
+**Usage**: MAC layer analysis, HARQ performance evaluation, scheduling analysis, link adaptation studies
+**Sample data**:
+```% time(s)	cellId	bwpId	IMSI	RNTI	frame	sframe	slot	symStart	numSym	harqId	ndi	rv	mcs	tbSize
+0.0163125	1	0	0	1	1	6	7	1	12	15	1	0	0	84
+0.016375	1	0	0	1	1	6	8	1	12	14	1	0	0	84
+```
+
+#### 6. Simulation Results Summary (`simulation_results.txt`)
+
+**Purpose**: End-of-simulation flow statistics and performance summary
+**Format**: Human-readable text file
+**Content**:
+- **Flow Information**: Source and destination addresses, protocol type
+- **Transmission Statistics**: Number of packets and bytes transmitted
+- **Reception Statistics**: Number of packets and bytes received
+- **Performance Metrics**: Throughput, mean delay, mean jitter
+- **Packet Delivery**: Success/failure statistics
+
+**Usage**: Quick performance overview, flow analysis, result validation
+**Sample content**:
+```
+Flow 1 (1.0.0.2:49153 -> 7.0.0.2:1234) proto UDP
+  Tx Packets: 1
+  Tx Bytes:   1528
+  TxOffered:  0.135822 Mbps
+  Rx Bytes:   0
+  Throughput:  0 Mbps
+  Mean delay:  0 ms
+  Mean jitter: 0 ms
+  Rx Packets: 0
+
+  Mean flow throughput: 0.000000
+  Mean flow delay: 0.000000
+```
+
+## Contributing
+
+This implementation is based on the ns-3 QD app code and has been enhanced for 5G NR simulations. Contributions are welcome for:
+
+* Additional scenarios
+* Enhanced beamforming algorithms
+* Performance optimizations
+
+## References
+
+* [ns-3 QD Channel Model](https://github.com/signetlabdei/qd-channel) - Original QD channel implementation
+* [5G LENA Repository](https://gitlab.com/cttc-lena/nr) - 5G LENA ns-3 module (version 5g-lena-v4.0)
+* T. Ropitault, M. Bordin, P. Testolina, M. Polese, P. Johari, N. Golmie, T. Melodia, "Enabling Site-Specific Cellular Network Simulation Through Ray-Tracing-Driven ns-3", submitted to CCNC 26
+
+## License
+
+This project is licensed under the GPL-2.0 license. See the LICENSE file for details.
+
+## Authors
+
+* NIST & Northeastern University - Modified and enhanced the original QD channel implementation and integrated it to 5G-LENA
+* SIGNET Lab, University of Padova - Original QD channel model development
+* CTTC (Centre Tecnològic de Telecomunicacions de Catalunya) - 5G LENA module development
+
+## Contact
+
+For any questions or further information, please contact:
+
+* **Tanguy Ropitault**
+* Email: tanguy.ropitault@nist.gov
+

@@ -25,7 +25,7 @@ set(base_examples
     cttc-nr-simple-qos-sched
     cttc-nr-multi-flow-qos-sched
     gsoc-nr-channel-models
-    external-mpcs-channel-example
+    traces-channel-example
 )
 foreach(
   example
