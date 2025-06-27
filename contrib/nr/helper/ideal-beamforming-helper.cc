@@ -34,9 +34,6 @@ LogBeamformingWithContext(std::string context,
                           BeamformingVector gnbBeamformingVector,
                           BeamformingVector ueBeamformingVector)
 {
-    // The beamforming is also performed between gNBs so this should be adapted to handle that.
-    // Basically just change the signature to use Tx and Rx instead of gnbId and ueId.
-    // However, this is not needed for the current use case.
     std::cout << "Beamforming performed: gNB ID = " << gnbId << ", UE ID = " << ueId << std::endl;
     static std::set<std::tuple<double, std::string, std::string>> loggedEntries;
 

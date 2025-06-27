@@ -3240,7 +3240,6 @@ ThreeGppChannelModel::GetNewChannel(Ptr<const ThreeGppChannelParams> channelPara
     NS_LOG_FUNCTION(this);
 
     NS_ASSERT_MSG(m_frequency > 0.0, "Set the operating frequency first!");
-    std::cout << "Time: " << Simulator::Now().GetSeconds() << " : GET NEW CHANNEL" << std::endl;
     // create a channel matrix instance
     Ptr<ChannelMatrix> channelMatrix = Create<ChannelMatrix>();
     channelMatrix->m_generatedTime = Simulator::Now();

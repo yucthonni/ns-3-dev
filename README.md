@@ -23,9 +23,9 @@ This repository hosts the implementation of 5G NR ns-3 simulation using trace-ba
 
 ## Repository Dependencies and Origins
 
-This repository reuses the **5G LENA repository (v4.0)** ([https://gitlab.com/cttc-lena/nr](https://gitlab.com/cttc-lena/nr)) extended to support trace-based channel model, which requires **ns-3 version 3.44 (included in this repository)**. The 5G LENA module provides the core NR (New Radio) functionality for 5G simulations.
+This repository reuses the [5G LENA repository (v4.0) (included in this repository)](https://gitlab.com/cttc-lena/nr) extended to support trace-based channel model, and  [ns-3 version 3.44 (included in this repository)](https://www.nsnam.org/releases/ns-3-44/) . The 5G LENA module provides the core NR (New Radio) functionality for 5G simulations.
 
-The **trace-based channel modeling implementation** is based on the **ns-3 QD app code** ([https://github.com/signetlabdei/qd-channel](https://github.com/signetlabdei/qd-channel)) and has been modified by NIST and Northeastern University for enhanced functionality and integration with the 5G LENA NR module.
+The **trace-based channel modeling implementation** is based on the [ns-3 QD app code](https://github.com/signetlabdei/qd-channel) and has been modified by NIST and Northeastern University for enhanced functionality and integration with the 5G LENA NR module.
 
 ## Prerequisites and Building
 
@@ -43,14 +43,21 @@ The **trace-based channel modeling implementation** is based on the **ns-3 QD ap
    ```
 
 2. **Configure the build**:
+   
+   **Recommended: Optimized build (faster simulation)**:
    ```bash
-   ./ns3 configure --enable-examples --enable-tests
+   ./ns3 configure --enable-examples --enable-tests --build-profile=optimized
+   ```
+   
+   **Alternative: Debug build (slower but with debugging information)**:
+   ```bash
+   ./ns3 configure --enable-examples --enable-tests --build-profile=debug
    ```
 
 3. **Build the code**:
    ```bash
-   ./ns3 build
-   ```
+./ns3 build
+```
 
 4. **Verify the build**:
    ```bash
@@ -64,6 +71,7 @@ To start the simulation with default settings:
 ```bash
 ./ns3 run "traces-channel-example"
 ```
+
 
 ## Overview of the Implementation
 
@@ -89,12 +97,12 @@ Scenarios/
 │       │   │   ├── device1.csv         # Device 1 positions for the entire simulation
 │       │   │   └── ...
 │       │   └── Channel/
-│       │       ├── Tx0_Rx1.txt         # Channel traces for device 0 device 1
-│       │       ├── Tx1_Rx0.txt         # Channel traces for device 1 device 0
+│       │       ├── Tx0Rx1.txt         # Channel traces for device 0 device 1
+│       │       ├── Tx1Rx0.txt         # Channel traces for device 1 device 0
 │       │       └── ...
 ```
 
-The organization and format is inherited from the NIST Q-D realization software format ([https://github.com/wigig-tools/qd-realization](https://github.com/wigig-tools/qd-realization)). To generate the channels used in this repository, we used Sionna. Please check the following tutorial for more information: ([https://MISSINGLINKFROMNORTHEASTERN](https://...))
+The organization and format is inherited from the [NIST Q-D realization software](https://github.com/wigig-tools/qd-realization) format . To generate the channels used in this repository, we used [Sionna RT](https://nvlabs.github.io/sionna/rt/index.html) . Please check the following tutorial for more information: ([https://MISSINGLINKFROMNORTHEASTERN](https://...))
 
 ### Channel Trace File Format
 
@@ -115,6 +123,8 @@ This repository enables the reproduction of results from the paper "Enabling Sit
 ### Section IV.A - Beamforming Analysis (Etoile Scenario)
 
 **Scenario Summary:**  
+<img src="Etoile.png" alt="Etoile Scenario" width="400">
+
 A single gNB operating at 28 GHz with 100 MHz bandwidth is mounted atop the Arc de Triomphe (Place de l'Étoile, Paris), and a UE at 1.5 m height traverses a circular arc around it. Over 8.9 s, the UE moves which varies the gNB's azimuth Angle of Departure from 0 ° to 90 °, stepping 1 ° every 100 ms. Two gNB phased-array configurations (16×16 and 16×128) and a UE 4×4 array are evaluated. The channel has been generated using Sionna as depicted in this tutorial: ([https://MISSINGLINKFROMNORTHEASTERN](https://...))
 
 To reproduce the beamforming results for the 16x16 gNB:
@@ -143,17 +153,20 @@ It is worth mentionning that the tx parameters always refer to the gNB(s) ones a
 ### Section IV.B - Performance Analysis (Boston Street Canyon Scenario)
 
 **Scenario Summary:**  
+
+<img src="Boston.png" alt="Boston Scenario" width="800">
+
 A single gNB equipped with a 16×16 planar phased-array antenna is mounted at 10 m height in an urban micro (UMi) street-canyon "Boston Twin" environment. A UE carrying a 4×4 planar array at 1.5 m height moves at a pedestrian speed of 1.5 m/s along a 375 m trajectory over 250 s, passing through three regions: Street A (0–67 s, NLoS), Street B (67–182 s, primarily LoS except 172–180 s), and Street C (182–250 s, NLoS). Performance is compared between the trace-based channel model generated using Sionna as described in this tutorial ([https://MISSINGLINKFROMNORTHEASTERN](https://...)), and the 3GPP TR 38.901 UMi statistical model. Traffic is a constant-bitrate UDP stream at 122 Mb/s (1500 B packets), and beamforming training occurs every 100 ms with a 10 ° scan resolution in both azimuth and elevation at the transmitter and 20 ° in azimuth and 10 ° in elevation at the receiver.
 
 To reproduce the performance analysis results presented in Section IV.B of the paper for the trace-based channel model:
 
 ```bash
-./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=1 --gnbNumRows=16 --gnbNumColumns=16 --ueNumRows=4 --ueNumColumns=4 --tracesScenario=BostonStreetCanyon --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=10.0 --rxAzimuthStep=20.0 --txZenithStart=0 --txZenithEnd=180 --rxZenithStart=0 --rxZenithEnd=180"
+./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=10000 --gnbNumRows=16 --gnbNumColumns=16 --ueNumRows=4 --ueNumColumns=4 --tracesScenario=BostonStreetCanyon --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=10.0 --rxAzimuthStep=20.0 --txZenithStart=0 --txZenithEnd=180 --rxZenithStart=0 --rxZenithEnd=180"
 ```
 
 To reproduce the performance analysis results presented in Section IV.B of the paper for the 3GPP channel model:
 ```bash
- ./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=1 --gnbNumRows=16 --gnbNumColumns=16 --ueNumRows=4 --ueNumColumns=4  --tracesScenario=BostonStreetCanyon --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=10.0 --rxAzimuthStep=20.0 --txZenithStart=0 --txZenithEnd=180 --rxZenithStart=0 --rxZenithEnd=180 --channelModel=3GPP"
+ ./ns3 run "traces-channel-example --gNbNum=1 --ueNumPergNb=1 --lambda=10000 --gnbNumRows=16 --gnbNumColumns=16 --ueNumRows=4 --ueNumColumns=4  --tracesScenario=BostonStreetCanyon --useAngularScanning=true --txZenithStep=10.0 --rxZenithStep=10.0 --txAzimuthStep=10.0 --rxAzimuthStep=20.0 --txZenithStart=0 --txZenithEnd=180 --rxZenithStart=0 --rxZenithEnd=180 --channelModel=3GPP"
 ```
 
 **Configuration Details:**
@@ -166,42 +179,120 @@ To reproduce the performance analysis results presented in Section IV.B of the p
 - **Detailed file descriptions**: See the [Output Files and Analysis](#output-files-and-analysis) section below
 
 
-### Device ID Generation and Mapping Process
+### Sionna-to-ns-3 Device Mapping Process
+The traces channel model bridges Sionna-generated channel data (or any other raytracing software/measurements) with ns-3 simulation entities through a systematic ID mapping process. This section explains how to properly structure your channel generation to work with the ns-3 traces channel model.
 
-The traces channel model maps trace data to ns-3 simulation entities using a sequential ID assignment system:
+#### Fundamental Mapping Principle
 
-**General Mapping Concept:**
-- **Position files**: `deviceX.csv` files contain device positions, where X is the device ID
-- **Channel files**: `TxX_RxY.txt` files contain channel data between device X (transmitter) and device Y (receiver)
-- **Sequential mapping**: Trace device IDs directly map to ns-3 node IDs (device5.csv → Node ID 5)
+**Channel Generation Software → ns-3 ID Mapping:**
+- **Device IDs** in your channel generation script must follow a specific ordering
+- **ns-3 node IDs** are assigned sequentially starting from 0
+- **Direct mapping**: Device X → ns-3 Node ID X
 
-**Sequential ID Assignment:**
+#### Critical Device Ordering Assumption
+
+**⚠️ IMPORTANT: Device Ordering in Channel Generation**
+
+When generating channel traces (using Sionna, other raytracing software, or measurements), you **MUST** follow this device ordering:
+
+1. **gNBs first**: The first `gNbNum` devices (IDs 0 to `gNbNum-1`) must be gNBs/base stations
+2. **UEs second**: The remaining devices (IDs `gNbNum` and beyond) must be UEs/user equipment
+
+
+**Example Sionna Device Assignment:**
+```python
+# For --gNbNum=2 --ueNumPergNb=2
+# Sionna device IDs:
+# Device 0: gNB 0
+# Device 1: gNB 1  
+# Device 2: UE 0 (attached to gNB 0)
+# Device 3: UE 1 (attached to gNB 0)
+# Device 4: UE 2 (attached to gNB 1)
+# Device 5: UE 3 (attached to gNB 1)
+```
+
+#### Required File Structure
+
+**Position Files:**
+- **Format**: `deviceX.csv` where X is the Sionna device ID
+- **Content**: Device positions (x, y, z coordinates)
+- **Naming**: Must be sequential starting from `device0.csv`
+
+**Channel Files:**
+- **Format**: `TxXRxY.txt` where X is transmitter device ID, Y is receiver device ID
+- **Content**: Channel MPCs
+- **Naming**: Must include all required device pairs
+
+#### Mapping Examples
 
 **Single gNB with Single UE:**
 ```bash
 --gNbNum=1 --ueNumPergNb=1
 ```
-- gNB: Node ID 0 (maps to `device0.csv`)
-- UE: Node ID 1 (maps to `device1.csv`)
-- Required channel files: `Tx0_Rx1.txt`, `Tx1_Rx0.txt`
+
+**Sionna Device Assignment:**
+- Device 0: gNB (maps to `device0.csv`)
+- Device 1: UE (maps to `device1.csv`)
+
+**Required Files:**
+- `device0.csv` (gNB position)
+- `device1.csv` (UE position)
+- `Tx0Rx1.txt` (gNB→UE channel)
+- `Tx1Rx0.txt` (UE→gNB channel)
 
 **Multiple gNBs and UEs:**
 ```bash
 --gNbNum=2 --ueNumPergNb=2
 ```
-- gNB 0: Node ID 0 (maps to `device0.csv`)
-- gNB 1: Node ID 1 (maps to `device1.csv`)
-- UE 0 (attached to gNB 0): Node ID 2 (maps to `device2.csv`)
-- UE 1 (attached to gNB 0): Node ID 3 (maps to `device3.csv`)
-- UE 2 (attached to gNB 1): Node ID 4 (maps to `device4.csv`)
-- UE 3 (attached to gNB 1): Node ID 5 (maps to `device5.csv`)
 
-**Key Rules:**
-- **gNBs**: Node IDs start from 0 and are assigned sequentially
-- **UEs**: Node IDs start after the last gNB ID and are assigned sequentially
-- **Total nodes**: `gNbNum + (gNbNum × ueNumPergNb)`
-- **File naming**: Device files must be named sequentially starting from `device0.csv`
-- **First devices**: The first `gNbNum` devices in the trace scenario are assumed to be gNBs
+**Sionna Device Assignment:**
+- Device 0: gNB 0 (maps to `device0.csv`)
+- Device 1: gNB 1 (maps to `device1.csv`)
+- Device 2: UE 0 (attached to gNB 0, maps to `device2.csv`)
+- Device 3: UE 1 (attached to gNB 0, maps to `device3.csv`)
+- Device 4: UE 2 (attached to gNB 1, maps to `device4.csv`)
+- Device 5: UE 3 (attached to gNB 1, maps to `device5.csv`)
+
+**Required Files:**
+- `device0.csv` through `device5.csv` (all device positions)
+- **ALL Channel Combinations** (6 devices × 6 devices = 36 files):
+  - **gNB-to-gNB**: `Tx0Rx1.txt`, `Tx1Rx0.txt`
+  - **gNB-to-UE**: `Tx0Rx2.txt`, `Tx0Rx3.txt`, `Tx0Rx4.txt`, `Tx0Rx5.txt`, `Tx1Rx2.txt`, `Tx1Rx3.txt`, `Tx1Rx4.txt`, `Tx1Rx5.txt`
+  - **UE-to-gNB**: `Tx2Rx0.txt`, `Tx2Rx1.txt`, `Tx3Rx0.txt`, `Tx3Rx1.txt`, `Tx4Rx0.txt`, `Tx4Rx1.txt`, `Tx5Rx0.txt`, `Tx5Rx1.txt`
+  - **UE-to-UE**: `Tx2Rx3.txt`, `Tx2Rx4.txt`, `Tx2Rx5.txt`, `Tx3Rx2.txt`, `Tx3Rx4.txt`, `Tx3Rx5.txt`, `Tx4Rx2.txt`, `Tx4Rx3.txt`, `Tx4Rx5.txt`, `Tx5Rx2.txt`, `Tx5Rx3.txt`, `Tx5Rx4.txt`
+
+**⚠️ IMPORTANT: Complete Channel Matrix Required**
+
+You must generate channel files for **ALL possible device pairs** (N×N matrix for N devices), not just the gNB-UE connections. This includes:
+- gNB-to-gNB channels (for inter-cell interference)
+- UE-to-UE channels (for device-to-device communication)
+- All cross-connections between any two devices
+
+
+#### Key Rules for Channel Generation
+
+1. **Device Ordering**: Always assign gNBs first (IDs 0 to `gNbNum-1`), then UEs
+2. **Sequential IDs**: Use sequential device IDs starting from 0
+3. **File Naming**: Name files exactly as `deviceX.csv` and `TxXRxY.txt`
+4. **Total Devices**: Generate exactly `gNbNum + (gNbNum × ueNumPergNb)` devices
+5. **Complete Channel Matrix**: Generate channel files for **ALL possible device pairs** (N×N matrix)
+6. **No Missing Combinations**: Every device must have a channel file to every other device
+
+
+#### ns-3 Internal Mapping
+
+The ns-3 traces channel model automatically maps these files to simulation entities:
+
+- **Sequential assignment**: Trace device IDs directly map to ns-3 node IDs
+- **gNB assignment**: First `gNbNum` nodes become gNBs
+- **UE assignment**: Remaining nodes become UEs
+- **Attachment**: UEs are attached to gNBs based on the `attachmentMode` parameter (see below)
+  - **`"closest"`**: UEs attach to the nearest gNB based on distance
+  - **`"id-based"`**: UEs attach to gNBs based on their index (UE 0,1 → gNB 0, UE 2,3 → gNB 1, etc.)
+
+**Key Parameters:**
+- **`gNbNum`**: Number of gNBs (base stations) in the simulation
+- **`ueNumPergNb`**: Number of UEs per gNB (total UEs = `gNbNum × ueNumPergNb`)
 
 ## Detailed Usage and Parameters
 
@@ -246,13 +337,21 @@ The traces channel model maps trace data to ns-3 simulation entities using a seq
 
 * **`numerologyBwp1`**: Numerology for bandwidth part 1. Default is `3`.
 
+### Simulation Configuration
+
+* **`simTimeAutoSet`**: Automatically set simulation time from trace files (default: `true`)
+  - **`true`**: Simulation duration is automatically read from trace files (recommended for Traces channel model)
+  - **`false`**: Use manually specified `simTime` parameter
+
+* **`simTime`**: Manual simulation duration in seconds (only used when `simTimeAutoSet=false`)
+  - **Default**: Not used when `simTimeAutoSet=true`
+  - **Usage**: Set this parameter when you want to override the trace file duration
+
 ### Traffic Configuration
 
 * **`lambda`**: Number of UDP packets per second. Default is `1`.
 
 * **`packetSize`**: UDP packet size in bytes. Default is `1500`.
-
-* **`simTime`**: Simulation duration. If not specified, automatically reads from trace files when using Traces channel model.
 
 * **`udpAppStartTime`**: Application start time. Default is `10` ms.
 
@@ -281,30 +380,29 @@ The simulation supports two beamforming modes controlled by the `useAngularScann
 
 **Angle Step Sizes (`*Step` parameters):**
 - **Purpose**: Control beamforming resolution and simulation speed
-- **Range**: 0.1° to 90° (smaller = higher resolution, slower simulation)
+- **Range**: 0.1 ° to 90 ° for zenith angles and 0.1 ° to 360 ° for azimuth angles(smaller = higher resolution, slower simulation)
 - **Typical values**: 
-  - High precision: 1°-5° (for detailed beamforming analysis)
-  - Balanced: 10°-20° (for general simulations)
-  - Fast simulation: 30°-90° (for quick testing)
+  - High precision: 1 ° to 5 ° (for detailed beamforming analysis)
+  - Balanced: 10 ° to 20 ° (for general simulations)
+  - Fast simulation: 30 ° to 90 ° (for quick testing)
 - **Impact**: Smaller steps increase beamforming accuracy but exponentially increase computation time
 
 **Zenith Angle Ranges (`*ZenithStart/End` parameters):**
 - **Purpose**: Control elevation angle scanning range
 - **Coordinate system**: 0° = upward, 90° = horizontal, 180° = downward
 - **Typical configurations**:
-  - **gNB (transmitter)**: 90°-135° (downward-looking, typical for rooftop/base station)
-  - **UE (receiver)**: 45°-90° (upward-looking, typical for ground-level devices)
-  - **Full range**: 0°-180° (complete spherical coverage)
+  - **gNB (transmitter)**: 90 ° to 135 ° (downward-looking, typical for rooftop/base station)
+  - **UE (receiver)**: 45 ° to 90 ° (upward-looking, typical for ground-level devices)
+  - **Full range**: 0 ° to 180 ° (complete spherical coverage)
 - **Performance tip**: Limit zenith ranges to physically relevant angles to reduce simulation time
 
 **Azimuth Angle Ranges (`*AzimuthStart/End` parameters):**
 - **Purpose**: Control horizontal angle scanning range
-- **Coordinate system**: 0° = North, 90° = East, 180° = South, 270° = West
+- **Coordinate system**: 0 ° = East, 90 ° = North, 180 ° = West, 270  = South
 - **Typical configurations**:
-  - **Sector coverage**: 0°-120° (120° sector, typical for sectorized cells)
-  - **Omnidirectional**: 0°-360° (full horizontal coverage)
-  - **Directional**: 45°-135° (specific direction, e.g., street canyon)
-- **Performance tip**: Use sector-based ranges for urban scenarios to focus on relevant directions
+  - **Sector coverage**: 0 ° to 120 ° (120 ° sector, typical for sectorized cells)
+  - **Omnidirectional**: 0° to 360 ° (full horizontal coverage)
+  - **Directional**: 45 ° to 135 ° (specific direction, e.g., street canyon)
 
 **Features:**
 - **Precise Control**: Direct specification of angular search ranges
@@ -344,7 +442,6 @@ The simulation supports two beamforming modes controlled by the `useAngularScann
 - **Array-Aware Resolution**: Automatically adapts to antenna array dimensions
 - **Simplified Configuration**: Fewer parameters to configure
 - **Proven Performance**: Well-tested approach in 5G simulations
-- **Predictable Performance**: Consistent simulation time regardless of scenario
 
 #### Beamforming Periodicity
 
@@ -354,12 +451,12 @@ The simulation supports two beamforming modes controlled by the `useAngularScann
 
 **Beamforming Update Interval:**
 - **Purpose**: Control how frequently beamforming vectors are recalculated
-- **Range**: 10ms to 1000ms (shorter = more responsive, higher overhead)
+- **Range**: 10ms to 1000ms (shorter = more responsive)
 - **Typical values**:
-  - **Fast mobility**: 10-50ms (for high-speed scenarios)
-  - **Standard**: 100ms (default, balanced performance)
-  - **Slow mobility**: 200-500ms (for static or slow-moving scenarios)
-  - **Static**: 1000ms (for fixed deployments)
+  - **Fast mobility**: 10 ms to 50 ms (for high-speed scenarios)
+  - **Standard**: 100 ms (default, balanced performance)
+  - **Slow mobility**: 200 ms to 500 ms (for static or slow-moving scenarios)
+  - **Static**: 1000 ms or longer (for fixed deployments)
 - **Impact**: Shorter intervals provide better tracking of channel changes but increase computational overhead
 - **Trade-off**: Responsiveness vs. simulation speed
 
@@ -371,14 +468,14 @@ The simulation supports two beamforming modes controlled by the `useAngularScann
 | **Parameters** | 12 angular parameters | 1 oversampling parameter |
 | **Performance** | Optimized for specific scenarios | General-purpose approach |
 | **Flexibility** | High (custom ranges) | Medium (sector-based) |
-| **Simulation Speed** | Variable (depends on ranges) | Consistent |
+
 
 #### Critical Azimuth Angle Coverage Difference
 
 **IMPORTANT**: There is a fundamental difference in azimuth angle coverage between the two beamforming methods:
 
 **Angular Scanning (`useAngularScanning=true`):**
-- **Azimuth Range**: **Full 360 degrees** (0°-360°)
+- **Azimuth Range**: **Full 360 degrees** (0 ° to 360°)
 - **Formula**: Direct conversion from degrees to radians: `azimuthAngle * π / 180`
 - **Flexibility**: Configurable start/end angles and step sizes
 - **Advantage**: Complete azimuth coverage with user-defined resolution
@@ -386,13 +483,12 @@ The simulation supports two beamforming modes controlled by the `useAngularScann
 **Sector-Based Scanning (`useAngularScanning=false`):**
 - **Azimuth Range**: **NOT 360 degrees** - Limited by antenna array configuration
 - **Formula**: `π * (sector / numColumns) - 0.5 * π`
-- **Typical Range**: -90° to +90° (or similar limited range)
+- **Typical Range**: -90 ° to +90 ° (or similar limited range)
 - **Limitation**: The azimuth coverage is constrained by the number of antenna columns and oversampling factor
 
 **Practical Impact:**
-- **Angular scanning** can scan the full horizontal plane (0°-360°), making it suitable for omnidirectional coverage scenarios
+- **Angular scanning** can scan the full horizontal plane (0 ° to 360 °), making it suitable for omnidirectional coverage scenarios
 - **Sector-based scanning** is limited to a subset of azimuth angles, typically covering a forward-looking sector. This is based on the original 5G LENA implementation where beamforming resolution is tied to antenna array dimensions
-- **Coverage scenarios**: Use angular scanning for full 360° coverage, sector-based scanning for directional/sectorized deployments
 
 **Example:**
 - For a 16×16 antenna array with sector-based scanning, the azimuth range might be limited to approximately ±90° around the boresight direction
@@ -504,7 +600,7 @@ Time,FlowId,Throughput(Mbps),AvgDelay(ms),AvgJitter(ms),PDR,InstDelay(ms),InstJi
 - **Imag**: Imaginary part of complex beamforming coefficient
 - **Sector**: **Method-dependent field** - meaning varies based on beamforming approach:
   - **Sector-based scanning** (`useAngularScanning=false`): Sector index (0, 1, 2, ...)
-  - **Angular scanning** (`useAngularScanning=true`): **Direct azimuth angle in degrees** (0-360°)
+  - **Angular scanning** (`useAngularScanning=true`): **Direct azimuth angle in degrees** (0 ° to 360 °)
   - **Note**: We maintain the same field name for both methods to avoid creating different file formats
 - **Elevation**: Elevation angle in degrees
 - **Power**: Power value

@@ -429,9 +429,6 @@ CellScanBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectrum
 
     // Trace callback to log beamforming results for analysis
     // This triggers the LogBeamforming function with gNB ID, UE ID, power, and beamforming vectors
-    // Please note that the beamforming is also performed between gNBs so this should be adapted to
-    // handle that. However, this is not needed for the current use case. Basically just change the
-    // signature to use Tx and Rx instead of gnbId and ueId.
     m_beamformingPerformed(gnbSpectrumPhy->GetDevice()->GetNode()->GetId(),
                            ueSpectrumPhy->GetDevice()->GetNode()->GetId(),
                            max,

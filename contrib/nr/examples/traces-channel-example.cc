@@ -9,13 +9,6 @@
  * - UDP traffic generation and flow monitoring
  * - Beamforming with CellScanBeamforming
  *
- * Key features:
- * - Uses Traces channel model for realistic channel modeling
- * - Implements beamforming with CellScanBeamforming
- * - Logs SINR values, positions, and flow statistics to CSV files
- * - Configurable simulation parameters (packet size, lambda, antenna config, etc.)
- * - Configurable UE-gNB attachment modes (closest distance or ID-based assignment)
- *
  * Attachment modes:
  * - "closest": UEs attach to the nearest gNB based on distance
  * - "id-based": UEs attach to gNBs based on their index (UE 0,1 → gNB 0, UE 2,3 → gNB 1, etc.)
@@ -33,6 +26,7 @@
 
 // Copyright (c) 2019 Centre Tecnologic de Telecomunicacions de Catalunya (CTTC)
 //
+// Modified by NIST
 // SPDX-License-Identifier: GPL-2.0-only
 
 /**
@@ -49,13 +43,6 @@
  * \code{.unparsed}
 $ ./ns3 run "traces-channel-example --PrintHelp"
     \endcode
- */
-
-/**
- * Useful references:
- * [1] 3GPP TS 38.300 - NR and NG-RAN Overall Description
- * [2] 3GPP TR 38.901 - Study on channel model for frequencies from 0.5 to 100 GHz
- * [3] ns-3 documentation - Logging module
  */
 
 #include "ns3/antenna-module.h"
@@ -328,7 +315,6 @@ ReadPositionsFromFile(const std::string& filename)
 void
 CreateDirectoryStructure(const std::string& path)
 {
-    std::cout << "Creating directory structure: " << path << std::endl;
     std::string currentPath;
     std::stringstream ss(path);
     std::string segment;
@@ -341,21 +327,12 @@ CreateDirectoryStructure(const std::string& path)
             struct stat st = {0};
             if (stat(currentPath.c_str(), &st) == -1)
             {
-                std::cout << "Creating directory: " << currentPath << std::endl;
                 int result = mkdir(currentPath.c_str(), 0755);
                 if (result != 0)
                 {
                     std::cout << "Failed to create directory: " << currentPath
                               << " Error: " << strerror(errno) << std::endl;
                 }
-                else
-                {
-                    std::cout << "Successfully created directory: " << currentPath << std::endl;
-                }
-            }
-            else
-            {
-                std::cout << "Directory already exists: " << currentPath << std::endl;
             }
         }
     }
@@ -465,10 +442,10 @@ main(int argc, char* argv[])
     uint8_t oversamplingFactor = 1;
 
     // Angular range configuration (only used when useAngularScanning = true)
-    double txZenithStart = 117.5;
-    double txZenithEnd = 118.5;
-    double rxZenithStart = 42.5;
-    double rxZenithEnd = 43.5;
+    double txZenithStart = 127.5;
+    double txZenithEnd = 128.5;
+    double rxZenithStart = 52.5;
+    double rxZenithEnd = 53.5;
     double txAzimuthStart = 0.0;
     double txAzimuthEnd = 360.0;
     double rxAzimuthStart = 0.0;
@@ -605,7 +582,7 @@ main(int argc, char* argv[])
 
     if (channelModel == "Traces")
     {
-        channelModelDir = scenarioDir + "/externalMPCs";
+        channelModelDir = scenarioDir + "/traces";
     }
     else if (channelModel == "3GPP")
     {
@@ -628,11 +605,6 @@ main(int argc, char* argv[])
     // Set up file names
     g_sinrTraceFile = antennaConfigDir + "/sinr_trace.csv";
     g_positionTraceFile = antennaConfigDir + "/position_trace.csv";
-
-    std::cout << "Directory structure created." << std::endl;
-    std::cout << "channelModelDir: " << channelModelDir << std::endl;
-    std::cout << "antennaConfigDir: " << antennaConfigDir << std::endl;
-    std::cout << "g_sinrTraceFile: " << g_sinrTraceFile << std::endl;
 
     // Clean up existing files
     std::string beamformingFile = antennaConfigDir + "/beamformingVector.csv";
@@ -775,9 +747,6 @@ main(int argc, char* argv[])
             Config::Connect("/NodeList/" + std::to_string(nodeId) +
                                 "/$ns3::MobilityModel/CourseChange",
                             MakeCallback(&CourseChange));
-
-            std::cout << "Connected mobility callback for UE " << i << " (Node " << nodeId
-                      << ") with " << uePositions.size() << " waypoints" << std::endl;
         }
     }
 

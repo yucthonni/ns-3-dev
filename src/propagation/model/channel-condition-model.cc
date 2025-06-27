@@ -431,10 +431,11 @@ ThreeGppChannelConditionModel::GetChannelCondition(Ptr<const MobilityModel> a,
     {
         cond = ComputeChannelCondition(a, b);
         // Print the channel condition for debugging
-        std::cout << "Time " << Simulator::Now().GetSeconds()
-                  << "s: Channel condition updated between Node " << a->GetObject<Node>()->GetId()
-                  << " and Node " << b->GetObject<Node>()->GetId() << " is "
-                  << (cond->IsLos() ? "LOS" : "NLOS") << std::endl;
+        // std::cout << "Time " << Simulator::Now().GetSeconds()
+        //           << "s: Channel condition updated between Node " <<
+        //           a->GetObject<Node>()->GetId()
+        //           << " and Node " << b->GetObject<Node>()->GetId() << " is "
+        //           << (cond->IsLos() ? "LOS" : "NLOS") << std::endl;
         // store the channel condition in m_channelConditionMap, used as cache.
         // For this reason you see a const_cast.
         Item mapItem;

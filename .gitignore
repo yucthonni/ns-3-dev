@@ -54,14 +54,3 @@ vcpkg/
 # Ignore Results folder
 Results/
 
-# 1) First, make sure nothing under trace-based is implicitly ignored:
-!contrib/nr/utils/channels/trace-based/**
-
-# 2) Now ignore all scenario subfolders…
-contrib/nr/utils/channels/trace-based/Scenarios/**
-
-# 3) …but re-include only BostonStreetCanyon and Etoile (and all their contents):
-!contrib/nr/utils/channels/trace-based/Scenarios/BostonStreetCanyon/**
-!contrib/nr/utils/channels/trace-based/Scenarios/Etoile/**
-
-

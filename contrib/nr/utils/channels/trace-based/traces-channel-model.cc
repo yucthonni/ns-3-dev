@@ -89,8 +89,7 @@ TracesChannelModel::GetTypeId(void)
                           MakeStringAccessor(&TracesChannelModel::m_scenario),
                           MakeStringChecker())
             .AddAttribute("Frequency",
-                          "The operating Frequency in Hz. This attribute is here "
-                          "only for compatibility with ns3::ThreeGppSpectrumPropagationLossModel.",
+                          "The operating Frequency in Hz.",
                           DoubleValue(__DBL_MIN__),
                           MakeDoubleAccessor(&TracesChannelModel::SetFrequency,
                                              &TracesChannelModel::GetFrequency),
@@ -245,9 +244,6 @@ TracesChannelModel::ReadNodesPosition()
 
         rtIdToNs3IdMap.insert(std::make_pair(deviceId, matchedNodeId));
         m_ns3IdToRtIdMap.insert(std::make_pair(matchedNodeId, deviceId));
-
-        std::cout << "Trace Device " << deviceId << " -> ns-3 Node " << matchedNodeId
-                  << " (position: " << nodePosition << ")" << std::endl;
 
         NS_LOG_INFO("traceId=" << deviceId << " maps to NodeId=" << matchedNodeId
                                << " with position=" << nodePosition);
