@@ -157,7 +157,7 @@ It is worth mentionning that the tx parameters always refer to the gNB(s) ones a
 
 <img src="Boston.png" alt="Boston Scenario" width="800">
 
-A single gNB equipped with a 16×16 planar phased-array antenna is mounted at 10 m height in an urban micro (UMi) street-canyon "Boston Twin" environment. A UE carrying a 4×4 planar array at 1.5 m height moves at a pedestrian speed of 1.5 m/s along a 375 m trajectory over 250 s, passing through three regions: Street A (0–67 s, NLoS), Street B (67–182 s, primarily LoS except 172–180 s), and Street C (182–250 s, NLoS). Performance is compared between the trace-based channel model generated using Sionna as described in this tutorial ([https://MISSINGLINKFROMNORTHEASTERN](https://...)), and the 3GPP TR 38.901 UMi statistical model. Traffic is a constant-bitrate UDP stream at 122 Mb/s (1500 B packets), and beamforming training occurs every 100 ms with a 10 ° scan resolution in both azimuth and elevation at the transmitter and 20 ° in azimuth and 10 ° in elevation at the receiver.
+A single gNB equipped with a 16×16 planar phased-array antenna is mounted at 10 m height in an urban micro (UMi) street-canyon "Boston Twin" environment. A UE carrying a 4×4 planar array at 1.5 m height moves at a pedestrian speed of 1.5 m/s along a 375 m trajectory over 250 s, passing through three regions: Street A (0–67 s, NLoS), Street B (67–182 s, primarily LoS except 172–180 s), and Street C (182–250 s, NLoS). Performance is compared between the trace-based channel model generated using Sionna as described in this tutorial ([https://MISSINGLINKFROMNORTHEASTERN](https://...)), and the 3GPP TR 38.901 UMi statistical model. Traffic is a constant-bitrate downlink UDP stream at 122 Mb/s (1500 B packets), and beamforming training occurs every 100 ms with a 10 ° scan resolution in both azimuth and elevation at the transmitter and 20 ° in azimuth and 10 ° in elevation at the receiver.
 
 To reproduce the performance analysis results presented in Section IV.B of the paper for the trace-based channel model:
 
@@ -256,7 +256,7 @@ When generating channel traces (using Sionna, other raytracing software, or meas
 
 **Required Files:**
 - `device0.csv` through `device5.csv` (all device positions)
-- **ALL Channel Combinations** (6 devices × 6 devices = 36 files):
+- **ALL Channel Combinations** (6 devices × 6 devices = 30 files, excluding self-channels):
   - **gNB-to-gNB**: `Tx0Rx1.txt`, `Tx1Rx0.txt`
   - **gNB-to-UE**: `Tx0Rx2.txt`, `Tx0Rx3.txt`, `Tx0Rx4.txt`, `Tx0Rx5.txt`, `Tx1Rx2.txt`, `Tx1Rx3.txt`, `Tx1Rx4.txt`, `Tx1Rx5.txt`
   - **UE-to-gNB**: `Tx2Rx0.txt`, `Tx2Rx1.txt`, `Tx3Rx0.txt`, `Tx3Rx1.txt`, `Tx4Rx0.txt`, `Tx4Rx1.txt`, `Tx5Rx0.txt`, `Tx5Rx1.txt`
@@ -268,6 +268,9 @@ You must generate channel files for **ALL possible device pairs** (N×N matrix f
 - gNB-to-gNB channels (for inter-cell interference)
 - UE-to-UE channels (for device-to-device communication)
 - All cross-connections between any two devices
+- **Self-channels are NOT needed** (e.g., `Tx0Rx0.txt`, `Tx1Rx1.txt`, etc.)
+
+**Formula**: For N devices, you need N²-N channel files (excluding self-channels).
 
 
 #### Key Rules for Channel Generation
@@ -349,7 +352,7 @@ The ns-3 traces channel model automatically maps these files to simulation entit
   - **Usage**: Set this parameter when you want to override the trace file duration
 
 ### Traffic Configuration
-
+The traffic is downlink with the following properties:
 * **`lambda`**: Number of UDP packets per second. Default is `1`.
 
 * **`packetSize`**: UDP packet size in bytes. Default is `1500`.

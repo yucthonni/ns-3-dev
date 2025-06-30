@@ -6,7 +6,7 @@
  * - Multiple gNBs and UEs configuration
  * - Traces channel model for realistic channel modeling
  * - SINR measurements and logging
- * - UDP traffic generation and flow monitoring
+ * - UDP downlink traffic generation and flow monitoring
  * - Beamforming with CellScanBeamforming
  *
  * Attachment modes:
@@ -410,7 +410,7 @@ main(int argc, char* argv[])
     uint16_t ueNumPergNb = 1;
     bool logging = false;
     std::string channelModel = "Traces";
-    std::string attachmentMode = "closest"; // Options: "closest" or "id-based"
+    std::string attachmentMode = "id-based"; // Options: "closest" or "id-based"
 
     // Traffic parameters
     uint32_t udpPacketSize = 1500;
