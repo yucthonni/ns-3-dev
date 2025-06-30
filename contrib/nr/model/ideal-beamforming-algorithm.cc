@@ -323,8 +323,7 @@ CellScanBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectrum
             double txTheta = txZenith + txZenithStep * 0.5;
 
             // Scan through sectors
-            for (double txSector = 0; txSector < txNumCols;
-                 txSector += txSectorStep) // TR++ Modif good // Normally 10
+            for (double txSector = 0; txSector < txNumCols; txSector += txSectorStep)
             {
                 NS_ASSERT(txSector < UINT16_MAX);
 
@@ -605,9 +604,6 @@ DirectPathBeamforming::GetBeamformingVectors(const Ptr<NrSpectrumPhy>& gnbSpectr
     // store the antenna weights
     BeamformingVector ueBfv =
         BeamformingVector(std::make_pair(ueAntennaWeights, BeamId::GetEmptyBeamId()));
-
-    // TR++
-    std::cout << "Call the callback" << std::endl;
 
     m_beamformingPerformed(gnbSpectrumPhy->GetDevice()->GetNode()->GetId(),
                            ueSpectrumPhy->GetDevice()->GetNode()->GetId(),
