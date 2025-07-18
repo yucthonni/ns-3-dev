@@ -34,8 +34,27 @@ LogBeamformingWithContext(std::string context,
                           BeamformingVector gnbBeamformingVector,
                           BeamformingVector ueBeamformingVector)
 {
+    static std::set<std::tuple<uint32_t, uint32_t, uint64_t>> loggedEntries;
+
+    // Create a unique key for this beamforming event using microsecond precision
+    auto entryKey = std::make_tuple(gnbId, ueId, Simulator::Now().GetMicroSeconds());
+
+    // Check if this exact entry has already been logged
+    if (loggedEntries.find(entryKey) != loggedEntries.end())
+    {
+        // This entry has already been logged, skip it
+        NS_LOG_DEBUG("Duplicate beamforming entry detected for gNB "
+                     << gnbId << " UE " << ueId << " at time " << Simulator::Now().GetMicroSeconds()
+                     << "μs, skipping");
+        return;
+    }
     std::cout << "Beamforming performed: gNB ID = " << gnbId << ", UE ID = " << ueId << std::endl;
-    static std::set<std::tuple<double, std::string, std::string>> loggedEntries;
+
+    // Add to logged entries set
+    loggedEntries.insert(entryKey);
+    NS_LOG_DEBUG("New beamforming entry logged for gNB " << gnbId << " UE " << ueId << " at time "
+                                                         << Simulator::Now().GetMicroSeconds()
+                                                         << "μs");
 
     // Use the output directory from the helper
     std::string filename = IdealBeamformingHelper::GetOutputDirectory() + "beamformingVector.csv";
@@ -133,14 +152,23 @@ IdealBeamformingHelper::AddBeamformingTask(const Ptr<NrGnbNetDevice>& gnbDev,
         m_beamformingAlgorithm = m_algorithmFactory.Create<IdealBeamformingAlgorithm>();
     }
 
+    // Create a unique context string for this gNB-UE pair
+    std::string pairContext = "gNB" + std::to_string(gnbDev->GetNode()->GetId()) + "-UE" +
+                              std::to_string(ueDev->GetNode()->GetId());
+
+    // Check if this pair has already been registered
+    static std::set<std::string> registeredPairs;
+    if (registeredPairs.find(pairContext) != registeredPairs.end())
+    {
+        NS_LOG_INFO("Beamforming task already registered for " << pairContext << ", skipping");
+        return;
+    }
+    registeredPairs.insert(pairContext);
+
     for (std::size_t ccId = 0; ccId < gnbDev->GetCcMapSize(); ccId++)
     {
         Ptr<NrSpectrumPhy> gnbSpectrumPhy = gnbDev->GetPhy(ccId)->GetSpectrumPhy();
         Ptr<NrSpectrumPhy> ueSpectrumPhy = ueDev->GetPhy(ccId)->GetSpectrumPhy();
-
-        // Create a unique context string for this gNB-UE pair
-        std::string pairContext = "gNB" + std::to_string(gnbDev->GetNode()->GetId()) + "-UE" +
-                                  std::to_string(ueDev->GetNode()->GetId());
 
         m_beamformingAlgorithm->TraceConnect("BeamformingPerformed",
                                              pairContext,
