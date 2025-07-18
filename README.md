@@ -1,6 +1,6 @@
 # SioLENA: 5G NR Traces Channel Model Simulation
 
-This repository hosts the implementation of 5G NR ns-3 simulation using trace-based channel modeling. The simulation leverages pre-computed channel traces from ray-tracing software (e.g., Sionna) or measurement campaigns to provide high-fidelity channel representation for 5G New Radio (NR) systems.
+This repository hosts the implementation of SioLENA, a 5G NR ns-3 simulation framework enabling the usage of trace-based channel. The simulation leverages pre-computed channel traces from ray-tracing software (e.g., Sionna) or measurement campaigns to provide high-fidelity channel representation for 5G New Radio (NR) systems.
 
 *This repository enables the reproduction of results from the paper "Enabling Site-Specific Cellular Network Simulation Through Ray-Tracing-Driven ns-3" by Tanguy Ropitault, Matteo Bordin, Paolo Testolina, Michele Polese, Pedram Johari, Nada Golmie, and Tommaso Melodia, submitted to CCNC 26.*
 ![Boston Beamforming Visualization](bostonBeam.gif)
