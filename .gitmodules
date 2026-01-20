@@ -4,3 +4,6 @@
 [submodule "contrib/ai"]
 	path = contrib/ai
 	url = https://github.com/yucthonni/ns3-ai.git
+[submodule "contrib/ns3sionna"]
+	path = contrib/ns3sionna
+	url = https://github.com/yucthonni/ns3-sionna.git
