@@ -4,3 +4,4 @@
 [submodule "contrib/nr"]
 	path = contrib/nr
 	url = https://github.com/yucthonni/ns3-nr
+	branch = siolena
