@@ -1,4 +1,0 @@
-ParameterName	Etoile_ref4_diffrTrue
-numberOfTimeDivisions	90
-totalTimeDuration	9.0
-carrierFrequency	28000000000.0

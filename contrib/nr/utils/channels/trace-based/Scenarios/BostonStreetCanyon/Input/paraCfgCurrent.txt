@@ -1,4 +1,0 @@
-ParameterName	BostonStreetCanyon_28Ghz_maxDepth4_DiffrTrue_1.5mAlt
-numberOfTimeDivisions	2509
-totalTimeDuration	250.9
-carrierFrequency	28000000000.0
