@@ -1,0 +1,6 @@
+[submodule "contrib/ai"]
+	path = contrib/ai
+	url = https://github.com/yucthonni/ns3-ai
+[submodule "contrib/nr"]
+	path = contrib/nr
+	url = https://github.com/yucthonni/ns3-nr
